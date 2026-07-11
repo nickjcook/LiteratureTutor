@@ -81,7 +81,7 @@ export function MetalanguageDictionary() {
 
         {!isLoading && search.trim() === "" && tabs.length > 0 && (
           <Tabs defaultValue={tabs[0]} className="mt-4 flex flex-1 flex-col overflow-hidden">
-            <TabsList className="w-full flex-wrap justify-start">
+            <TabsList className="h-auto w-full flex-wrap justify-start gap-1">
               {tabs.map((tab) => (
                 <TabsTrigger key={tab} value={tab} data-testid={`tab-${tab}`}>
                   {tab}

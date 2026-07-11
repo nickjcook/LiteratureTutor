@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useLocation } from "wouter";
-import { useUpsertMyProfile } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useUpsertMyProfile, getGetMyProfileQueryKey } from "@workspace/api-client-react";
 import type { CourseType } from "@workspace/api-client-react";
 import { Layout } from "@/components/Layout";
 import { COURSE_LABELS } from "@/components/DocumentCard";
@@ -23,6 +24,7 @@ export default function Onboarding() {
   const [yearLevel, setYearLevel] = useState("");
   const [courseType, setCourseType] = useState("");
   const [school, setSchool] = useState("");
+  const queryClient = useQueryClient();
   const mutation = useUpsertMyProfile();
 
   const canSubmit = yearLevel !== "" && courseType !== "";
@@ -38,7 +40,12 @@ export default function Onboarding() {
           school: school.trim() === "" ? null : school.trim(),
         },
       },
-      { onSuccess: () => navigate("/map") },
+      {
+        onSuccess: async () => {
+          await queryClient.invalidateQueries({ queryKey: getGetMyProfileQueryKey() });
+          navigate("/map");
+        },
+      },
     );
   }
 
