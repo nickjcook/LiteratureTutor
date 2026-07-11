@@ -10,6 +10,20 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: Auth
+    description: Browser and mobile authentication endpoints.
+  - name: Profile
+    description: Student profile operations
+  - name: Texts
+    description: Studied text catalogue
+  - name: ContentTypes
+    description: Content type catalogue
+  - name: Documents
+    description: Published content delivery and progress tracking
+  - name: Metalanguage
+    description: Standalone metalanguage dictionary
+  - name: Admin
+    description: Content management (admin-only)
 paths:
   /healthz:
     get:
@@ -24,7 +38,621 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /auth/user:
+    get:
+      tags: [Auth]
+      operationId: getCurrentAuthUser
+      summary: Get the currently authenticated user
+      parameters:
+        - $ref: "#/components/parameters/AuthorizationSessionHeader"
+        - $ref: "#/components/parameters/SessionCookie"
+      responses:
+        "200":
+          description: Auth status resolved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUserEnvelope"
+  /login:
+    get:
+      tags: [Auth]
+      operationId: beginBrowserLogin
+      summary: Start the browser OIDC login flow
+      parameters:
+        - name: returnTo
+          in: query
+          required: false
+          description: Relative path to redirect to after login (must start with `/`). Defaults to `/`.
+          schema:
+            type: string
+      responses:
+        "302":
+          description: Redirect to the OIDC authorization endpoint.
+  /callback:
+    get:
+      tags: [Auth]
+      operationId: handleBrowserLoginCallback
+      summary: Complete the browser OIDC login flow
+      parameters:
+        - name: code
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: iss
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uri
+      responses:
+        "302":
+          description: Redirect to the `returnTo` path on success (defaults to `/`) or `/api/login` on failure.
+  /logout:
+    get:
+      tags: [Auth]
+      operationId: logoutBrowserSession
+      summary: Clear the session and begin OIDC logout
+      parameters:
+        - $ref: "#/components/parameters/AuthorizationSessionHeader"
+        - $ref: "#/components/parameters/SessionCookie"
+      responses:
+        "302":
+          description: Redirect to the OIDC provider logout URL.
+  /mobile-auth/token-exchange:
+    post:
+      tags: [Auth]
+      operationId: exchangeMobileAuthorizationCode
+      summary: Exchange a mobile OIDC code for a session token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MobileTokenExchangeRequest"
+      responses:
+        "200":
+          description: Session created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MobileTokenExchangeSuccess"
+        "400":
+          description: Missing or invalid required fields.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Token did not contain usable claims.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "500":
+          description: Token exchange failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /mobile-auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logoutMobileSession
+      summary: Delete a mobile session token
+      parameters:
+        - $ref: "#/components/parameters/AuthorizationSessionHeader"
+      responses:
+        "200":
+          description: Logout processed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LogoutSuccess"
+
+  /profile:
+    get:
+      tags: [Profile]
+      operationId: getMyProfile
+      summary: Get the current student's profile
+      responses:
+        "200":
+          description: Profile resolved (may be null before onboarding).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentProfileEnvelope"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    put:
+      tags: [Profile]
+      operationId: upsertMyProfile
+      summary: Create or update the current student's profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertStudentProfileBody"
+      responses:
+        "200":
+          description: Profile saved.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentProfile"
+        "400":
+          description: Invalid input.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /texts:
+    get:
+      tags: [Texts]
+      operationId: listTexts
+      summary: List studied texts
+      parameters:
+        - name: yearLevel
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: courseType
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/CourseType"
+      responses:
+        "200":
+          description: Texts matching the filters.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Text"
+
+  /content-types:
+    get:
+      tags: [ContentTypes]
+      operationId: listContentTypes
+      summary: List content types
+      responses:
+        "200":
+          description: All content types.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ContentType"
+
+  /documents:
+    get:
+      tags: [Documents]
+      operationId: listDocuments
+      summary: List published documents matching the curriculum mapping filters
+      parameters:
+        - name: yearLevel
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: courseType
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/CourseType"
+        - name: textId
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: contentTypeId
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: taskType
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/TaskType"
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Published documents matching the filters.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DocumentSummary"
+  /documents/{slug}:
+    get:
+      tags: [Documents]
+      operationId: getDocument
+      summary: Get a published document by slug
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The document.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentDetail"
+        "404":
+          description: Not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /documents/{slug}/progress:
+    post:
+      tags: [Documents]
+      operationId: markDocumentViewed
+      summary: Record that the current student viewed a document
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Progress recorded.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProgressRecord"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /documents/{slug}/complete:
+    post:
+      tags: [Documents]
+      operationId: markDocumentCompleted
+      summary: Record that the current student completed a document
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Progress recorded.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProgressRecord"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /metalanguage-terms:
+    get:
+      tags: [Metalanguage]
+      operationId: listMetalanguageTerms
+      summary: List or search metalanguage dictionary terms
+      parameters:
+        - name: tab
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Terms matching the filters.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MetalanguageTerm"
+
+  /admin/status:
+    get:
+      tags: [Admin]
+      operationId: getAdminStatus
+      summary: Check whether the current user has admin (CMS) access
+      responses:
+        "200":
+          description: Admin status.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminStatus"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /admin/documents:
+    get:
+      tags: [Admin]
+      operationId: adminListDocuments
+      summary: List all documents including drafts (admin only)
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/DocumentStatus"
+        - name: contentTypeId
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: All documents matching the filters.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DocumentSummary"
+        "403":
+          description: Not an admin.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    post:
+      tags: [Admin]
+      operationId: adminCreateDocument
+      summary: Create a new document (draft by default)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDocumentBody"
+      responses:
+        "201":
+          description: Document created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentDetail"
+        "400":
+          description: Invalid input.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Not an admin.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /admin/documents/{id}:
+    get:
+      tags: [Admin]
+      operationId: adminGetDocument
+      summary: Get any document by id, including drafts (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: The document.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentDetail"
+        "403":
+          description: Not an admin.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    patch:
+      tags: [Admin]
+      operationId: adminUpdateDocument
+      summary: Update a document
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateDocumentBody"
+      responses:
+        "200":
+          description: Document updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentDetail"
+        "400":
+          description: Invalid input.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Not an admin.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /admin/documents/{id}/publish:
+    post:
+      tags: [Admin]
+      operationId: adminPublishDocument
+      summary: Publish a document, snapshotting a new version
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Document published.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentDetail"
+        "403":
+          description: Not an admin.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /admin/documents/{id}/versions:
+    get:
+      tags: [Admin]
+      operationId: adminListDocumentVersions
+      summary: List version history for a document
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Version history, most recent first.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DocumentVersion"
+        "403":
+          description: Not an admin.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /admin/documents/{id}/versions/{versionId}/restore:
+    post:
+      tags: [Admin]
+      operationId: adminRestoreDocumentVersion
+      summary: Restore a document's body to a prior version (as a new draft)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: versionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Document restored.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentDetail"
+        "403":
+          description: Not an admin.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
 components:
+  parameters:
+    AuthorizationSessionHeader:
+      name: Authorization
+      in: header
+      required: false
+      description: Opaque session token — `Bearer <sid>`.
+      schema:
+        type: string
+    SessionCookie:
+      name: sid
+      in: cookie
+      required: false
+      description: Browser session cookie.
+      schema:
+        type: string
+
   schemas:
     HealthStatus:
       type: object
@@ -34,3 +662,330 @@ components:
       required:
         - status
 
+    AuthUser:
+      type: object
+      required: [id, email, firstName, lastName, profileImageUrl]
+      properties:
+        id:
+          type: string
+        email:
+          type: [string, "null"]
+          format: email
+        firstName:
+          type: [string, "null"]
+        lastName:
+          type: [string, "null"]
+        profileImageUrl:
+          type: [string, "null"]
+    AuthUserEnvelope:
+      type: object
+      required: [user]
+      properties:
+        user:
+          oneOf:
+            - $ref: "#/components/schemas/AuthUser"
+            - type: "null"
+    MobileTokenExchangeRequest:
+      type: object
+      required: [code, code_verifier, redirect_uri, state]
+      properties:
+        code:
+          type: string
+          minLength: 1
+        code_verifier:
+          type: string
+          minLength: 1
+        redirect_uri:
+          type: string
+          minLength: 1
+          format: uri
+        state:
+          type: string
+          minLength: 1
+        nonce:
+          type: string
+          minLength: 1
+    MobileTokenExchangeSuccess:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+    LogoutSuccess:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+          const: true
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
+    CourseType:
+      type: string
+      enum: [literature_atar, english_atar, general_english]
+    TaskType:
+      type: string
+      enum: [essay, close_reading, short_answer, creative_writing]
+    DocumentStatus:
+      type: string
+      enum: [draft, published]
+
+    StudentProfile:
+      type: object
+      required: [userId, yearLevel, courseType, school, updatedAt]
+      properties:
+        userId:
+          type: string
+        yearLevel:
+          type: integer
+          minimum: 7
+          maximum: 12
+        courseType:
+          $ref: "#/components/schemas/CourseType"
+        school:
+          type: [string, "null"]
+        updatedAt:
+          type: string
+          format: date-time
+    StudentProfileEnvelope:
+      type: object
+      required: [profile]
+      properties:
+        profile:
+          oneOf:
+            - $ref: "#/components/schemas/StudentProfile"
+            - type: "null"
+    UpsertStudentProfileBody:
+      type: object
+      required: [yearLevel, courseType]
+      properties:
+        yearLevel:
+          type: integer
+          minimum: 7
+          maximum: 12
+        courseType:
+          $ref: "#/components/schemas/CourseType"
+        school:
+          type: [string, "null"]
+
+    Text:
+      type: object
+      required: [id, title, author, yearLevels, courseTypes]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        author:
+          type: string
+        yearLevels:
+          type: array
+          items:
+            type: integer
+        courseTypes:
+          type: array
+          items:
+            $ref: "#/components/schemas/CourseType"
+    TextRef:
+      type: object
+      required: [id, title]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+
+    ContentType:
+      type: object
+      required: [id, slug, name, description]
+      properties:
+        id:
+          type: integer
+        slug:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+
+    DocumentSummary:
+      type: object
+      required:
+        - id
+        - title
+        - slug
+        - contentType
+        - yearLevels
+        - courseTypes
+        - taskTypes
+        - status
+        - texts
+        - publishedAt
+        - updatedAt
+        - isNew
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        slug:
+          type: string
+        contentType:
+          $ref: "#/components/schemas/ContentType"
+        yearLevels:
+          type: array
+          items:
+            type: integer
+        courseTypes:
+          type: array
+          items:
+            $ref: "#/components/schemas/CourseType"
+        taskTypes:
+          type: array
+          items:
+            $ref: "#/components/schemas/TaskType"
+        status:
+          $ref: "#/components/schemas/DocumentStatus"
+        texts:
+          type: array
+          items:
+            $ref: "#/components/schemas/TextRef"
+        publishedAt:
+          type: [string, "null"]
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        isNew:
+          type: boolean
+    DocumentDetail:
+      allOf:
+        - $ref: "#/components/schemas/DocumentSummary"
+        - type: object
+          required: [body, copyrightNotice]
+          properties:
+            body:
+              type: string
+            copyrightNotice:
+              type: string
+
+    CreateDocumentBody:
+      type: object
+      required:
+        - title
+        - contentTypeId
+        - body
+        - yearLevels
+        - courseTypes
+        - taskTypes
+        - textIds
+      properties:
+        title:
+          type: string
+          minLength: 1
+        contentTypeId:
+          type: integer
+        body:
+          type: string
+        yearLevels:
+          type: array
+          items:
+            type: integer
+        courseTypes:
+          type: array
+          items:
+            $ref: "#/components/schemas/CourseType"
+        taskTypes:
+          type: array
+          items:
+            $ref: "#/components/schemas/TaskType"
+        textIds:
+          type: array
+          items:
+            type: integer
+        status:
+          $ref: "#/components/schemas/DocumentStatus"
+    UpdateDocumentBody:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+        contentTypeId:
+          type: integer
+        body:
+          type: string
+        yearLevels:
+          type: array
+          items:
+            type: integer
+        courseTypes:
+          type: array
+          items:
+            $ref: "#/components/schemas/CourseType"
+        taskTypes:
+          type: array
+          items:
+            $ref: "#/components/schemas/TaskType"
+        textIds:
+          type: array
+          items:
+            type: integer
+        status:
+          $ref: "#/components/schemas/DocumentStatus"
+
+    DocumentVersion:
+      type: object
+      required: [id, documentId, versionNumber, body, createdAt]
+      properties:
+        id:
+          type: integer
+        documentId:
+          type: integer
+        versionNumber:
+          type: integer
+        body:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    MetalanguageTerm:
+      type: object
+      required: [id, term, definition, tab, example]
+      properties:
+        id:
+          type: integer
+        term:
+          type: string
+        definition:
+          type: string
+        tab:
+          type: string
+        example:
+          type: [string, "null"]
+
+    AdminStatus:
+      type: object
+      required: [isAdmin]
+      properties:
+        isAdmin:
+          type: boolean
+
+    ProgressRecord:
+      type: object
+      required: [documentId, viewedAt, completedAt]
+      properties:
+        documentId:
+          type: integer
+        viewedAt:
+          type: [string, "null"]
+          format: date-time
+        completedAt:
+          type: [string, "null"]
+          format: date-time

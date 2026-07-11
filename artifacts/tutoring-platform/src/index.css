@@ -114,15 +114,15 @@
   --sidebar: 210 40% 98%;
   --sidebar-foreground: 222 47% 11%;
   --sidebar-border: 214 32% 91%;
-  --sidebar-primary: 222 47% 40%;
+  --sidebar-primary: 252 32% 34%;
   --sidebar-primary-foreground: 0 0% 100%;
   --sidebar-accent: 210 40% 94%;
   --sidebar-accent-foreground: 222 47% 11%;
-  --sidebar-ring: 222 47% 40%;
+  --sidebar-ring: 252 32% 34%;
   --popover: 0 0% 100%;
   --popover-foreground: 222 47% 11%;
   --popover-border: 214 32% 91%;
-  --primary: 222 47% 40%;
+  --primary: 252 32% 34%;
   --primary-foreground: 0 0% 100%;
   --secondary: 210 40% 96%;
   --secondary-foreground: 222 47% 11%;
@@ -133,15 +133,15 @@
   --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 100%;
   --input: 214 32% 91%;
-  --ring: 222 47% 40%;
-  --chart-1: 222 47% 40%;
+  --ring: 252 32% 34%;
+  --chart-1: 252 32% 34%;
   --chart-2: 189 60% 45%;
   --chart-3: 142 55% 45%;
   --chart-4: 35 85% 55%;
   --chart-5: 320 55% 55%;
 
   --app-font-sans: 'Inter', sans-serif;
-  --app-font-serif: Georgia, serif;
+  --app-font-serif: 'Lora', Georgia, serif;
   --app-font-mono: Menlo, monospace;
   --radius: .5rem; /* 8px */
   --shadow-2xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00); /*replace with H S L */
@@ -205,15 +205,15 @@
   --sidebar: 222 47% 10%;
   --sidebar-foreground: 210 40% 96%;
   --sidebar-border: 217 33% 20%;
-  --sidebar-primary: 213 70% 60%;
+  --sidebar-primary: 250 55% 72%;
   --sidebar-primary-foreground: 222 47% 8%;
   --sidebar-accent: 217 33% 18%;
   --sidebar-accent-foreground: 210 40% 96%;
-  --sidebar-ring: 213 70% 60%;
+  --sidebar-ring: 250 55% 72%;
   --popover: 222 47% 11%;
   --popover-foreground: 210 40% 96%;
   --popover-border: 217 33% 20%;
-  --primary: 213 70% 60%;
+  --primary: 250 55% 72%;
   --primary-foreground: 222 47% 8%;
   --secondary: 217 33% 18%;
   --secondary-foreground: 210 40% 96%;
@@ -226,8 +226,8 @@
 
   /* Used as the border around inputs. Dark mode: Should be a border that is light enough to have high contrast when rendered on a --card background. More contrast than standard --border */
   --input: 217 33% 26%;
-  --ring: 213 70% 60%;
-  --chart-1: 213 70% 60%;
+  --ring: 250 55% 72%;
+  --chart-1: 250 55% 72%;
   --chart-2: 189 60% 55%;
   --chart-3: 142 55% 55%;
   --chart-4: 35 85% 60%;
