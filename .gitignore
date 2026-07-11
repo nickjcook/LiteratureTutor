@@ -50,3 +50,9 @@ Thumbs.db
 
 # Claude Code
 .claude/
+
+# Claude Code persistent-session launcher scripts + runtime logs (local only)
+run-claude.sh
+claude-tmux.sh
+claude-autostart.sh
+claude-logs/
