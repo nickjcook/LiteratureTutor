@@ -3,16 +3,34 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
-    <title>Pamina Rich — English &amp; Literature</title>
+    <title>TELOS — English &amp; Literature</title>
     <meta name="description" content="WA English &amp; Literature ATAR tutoring, mapped to the SCASA curriculum — twenty years of teaching practice, delivered as a methodology, not a generic content library." />
     <meta name="robots" content="index, follow" />
-    <meta property="og:title" content="Pamina Rich — English &amp; Literature" />
+    <meta property="og:title" content="TELOS — English &amp; Literature" />
     <meta property="og:description" content="WA English &amp; Literature ATAR tutoring, mapped to the SCASA curriculum — twenty years of teaching practice, delivered as a methodology, not a generic content library." />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Pamina Rich — English &amp; Literature" />
+    <meta name="twitter:title" content="TELOS — English &amp; Literature" />
     <meta name="twitter:description" content="WA English &amp; Literature ATAR tutoring, mapped to the SCASA curriculum." />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <script>
+      // Apply saved display/accessibility preferences before first paint to
+      // avoid a flash of the default theme. Mirrors src/lib/preferences.tsx.
+      (function () {
+        try {
+          var d = { theme: "system", contrast: "normal", colorBlind: "off", textSize: "normal" };
+          var raw = localStorage.getItem("pr-display-preferences");
+          var p = raw ? Object.assign(d, JSON.parse(raw)) : d;
+          var el = document.documentElement;
+          var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+          var dark = p.theme === "dark" || (p.theme === "system" && prefersDark);
+          el.classList.toggle("dark", dark);
+          el.classList.toggle("hc", p.contrast === "high");
+          el.classList.toggle("cb", p.colorBlind === "on");
+          el.dataset.textSize = p.textSize;
+        } catch (e) {}
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,500;0,600;0,700;1,500&display=swap" rel="stylesheet">

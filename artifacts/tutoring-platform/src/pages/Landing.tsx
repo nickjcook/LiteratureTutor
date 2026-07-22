@@ -11,17 +11,17 @@ export default function Landing() {
     <Layout>
       <div className="mx-auto max-w-3xl px-6 py-20 text-center sm:py-28">
         <p className="text-sm font-medium uppercase tracking-widest text-primary">
-          Western Australia · Years 7–12
+          TELOS · Western Australia · Years 7–12
         </p>
         <h1 className="mt-4 font-serif text-4xl font-semibold tracking-tight sm:text-5xl">
           English &amp; Literature, taught the way it should be.
         </h1>
         <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground">
-          Every document on this platform reflects twenty years of teaching practice —
-          the same frameworks, the same rigour, the same attention a student would get
-          in the room. It's not a generic tutoring platform: it's a methodology, mapped
-          to the SCASA English and Literature curriculum, that meets you exactly where
-          your next assessment is.
+          <span className="font-medium text-foreground">TELOS</span> delivers twenty
+          years of teaching practice as a living methodology — the same frameworks, the
+          same rigour, the same attention a student would get in the room. It isn't a
+          generic tutoring platform: it's mapped to the SCASA English and Literature
+          curriculum, and it meets you exactly where your next assessment is.
         </p>
         <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
           {isAuthenticated ? (

@@ -244,6 +244,83 @@
 
 }
 
+/* ---------------------------------------------------------------------------
+ * Accessibility & display preferences
+ * Driven by src/lib/preferences.tsx via classes / data-attributes on <html>:
+ *   .dark                  colour scheme (also toggled for system-dark)
+ *   .hc                    high-contrast mode (limited-eyesight readability)
+ *   .cb                    colour-blind-safe palette (Okabe-Ito)
+ *   [data-text-size]       readability text scaling
+ * ------------------------------------------------------------------------- */
+
+/* Readability: scale the root font size so every rem-based token grows with it. */
+html[data-text-size="large"] {
+  font-size: 112.5%; /* ~18px base */
+}
+html[data-text-size="xlarge"] {
+  font-size: 125%; /* ~20px base */
+}
+
+/* High contrast: push foreground/background apart and strengthen borders,
+ * focus rings and links for low-vision readability. */
+.hc {
+  --foreground: 0 0% 8%;
+  --background: 0 0% 100%;
+  --card-foreground: 0 0% 8%;
+  --popover-foreground: 0 0% 8%;
+  --muted-foreground: 0 0% 24%;
+  --border: 0 0% 32%;
+  --input: 0 0% 32%;
+  --card-border: 0 0% 32%;
+  --ring: 0 0% 0%;
+  --primary: 252 60% 30%;
+}
+.hc.dark {
+  --foreground: 0 0% 100%;
+  --background: 0 0% 4%;
+  --card: 0 0% 8%;
+  --card-foreground: 0 0% 100%;
+  --popover-foreground: 0 0% 100%;
+  --muted-foreground: 0 0% 88%;
+  --border: 0 0% 78%;
+  --input: 0 0% 78%;
+  --card-border: 0 0% 78%;
+  --ring: 0 0% 100%;
+  --primary: 250 70% 80%;
+}
+/* Give interactive/inline links an unmistakable affordance in high contrast. */
+.hc a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.hc :focus-visible {
+  outline: 3px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+/* Colour-blind-safe categorical palette (Okabe-Ito). Remaps the chart tokens
+ * so any colour-coded UI stays distinguishable for the common CVD types. */
+.cb {
+  --chart-1: 202 100% 35%; /* blue        #0072B2 */
+  --chart-2: 32 100% 45%;  /* orange      #E69F00 */
+  --chart-3: 164 100% 31%; /* bluish grn  #009E73 */
+  --chart-4: 56 84% 60%;   /* yellow      #F0E442 */
+  --chart-5: 326 44% 64%;  /* redd purple #CC79A7 */
+  --destructive: 24 100% 42%; /* vermillion — not red/green reliant */
+}
+
+/* Respect users who ask the OS to reduce motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 @layer base {
   * {
     @apply border-border;

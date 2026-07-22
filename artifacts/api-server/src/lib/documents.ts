@@ -11,7 +11,10 @@ import {
 
 const NEW_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
 
-export const COPYRIGHT_NOTICE = `© Pamina Rich ${new Date().getFullYear()}. All rights reserved.`;
+// Content is Pamina Rich's IP (the methodology); the TELOS platform is owned and
+// operated by Evolve Strategists under licence. Interim wording pending the
+// Pam <-> Evolve agreement finalising the exact licence phrasing.
+export const COPYRIGHT_NOTICE = `Content © Pamina Rich ${new Date().getFullYear()} · Used under licence by Evolve Strategists (TELOS)`;
 
 export interface DocumentSummaryShape {
   id: number;
