@@ -216,6 +216,59 @@ export interface SetUserAdminBody {
   isAdmin: boolean;
 }
 
+export interface LoginBody {
+  /** @minLength 3 */
+  email: string;
+  /** @minLength 1 */
+  password: string;
+  rememberMe?: boolean;
+}
+
+export interface ChangePasswordBody {
+  /** Required when the account already has a password. */
+  currentPassword?: string;
+  /** @minLength 8 */
+  newPassword: string;
+}
+
+export interface SuccessResult {
+  success: boolean;
+}
+
+export interface CreateUserAccountBody {
+  /** @minLength 3 */
+  email: string;
+  /** @nullable */
+  firstName?: string | null;
+  /** @nullable */
+  lastName?: string | null;
+  /**
+     * Omit to have the server generate a temporary password.
+     * @minLength 8
+     */
+  password?: string;
+  isAdmin?: boolean;
+}
+
+export interface AdminCreateUserResult {
+  user: AdminUserSummary;
+  /** @nullable */
+  temporaryPassword: string | null;
+}
+
+export interface AdminSetPasswordBody {
+  /**
+     * Omit to have the server generate a temporary password.
+     * @minLength 8
+     */
+  password?: string;
+}
+
+export interface AdminSetPasswordResult {
+  /** @nullable */
+  temporaryPassword: string | null;
+}
+
 export interface ProgressRecord {
   documentId: number;
   /** @nullable */

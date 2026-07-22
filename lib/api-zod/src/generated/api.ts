@@ -43,6 +43,55 @@ export const GetCurrentAuthUserResponse = zod.object({
 
 
 /**
+ * @summary Sign in with email and password (interim local auth until Clerk)
+ */
+export const loginWithPasswordBodyEmailMin = 3;
+
+
+
+
+export const LoginWithPasswordBody = zod.object({
+  "email": zod.string().min(loginWithPasswordBodyEmailMin),
+  "password": zod.string().min(1),
+  "rememberMe": zod.boolean().optional()
+})
+
+export const LoginWithPasswordResponse = zod.object({
+  "user": zod.union([zod.object({
+  "id": zod.string(),
+  "email": zod.email().nullable(),
+  "firstName": zod.string().nullable(),
+  "lastName": zod.string().nullable(),
+  "profileImageUrl": zod.string().nullable()
+}),zod.null()]),
+  "impersonator": zod.union([zod.object({
+  "id": zod.string(),
+  "email": zod.email().nullable(),
+  "firstName": zod.string().nullable(),
+  "lastName": zod.string().nullable(),
+  "profileImageUrl": zod.string().nullable()
+}),zod.null()]).optional().describe('Set when an admin is currently impersonating another user: the admin\'s own identity. Absent or null otherwise.\n')
+})
+
+
+/**
+ * @summary Set or change the signed-in user's password
+ */
+export const changeMyPasswordBodyNewPasswordMin = 8;
+
+
+
+export const ChangeMyPasswordBody = zod.object({
+  "currentPassword": zod.string().optional().describe('Required when the account already has a password.'),
+  "newPassword": zod.string().min(changeMyPasswordBodyNewPasswordMin)
+})
+
+export const ChangeMyPasswordResponse = zod.object({
+  "success": zod.boolean()
+})
+
+
+/**
  * @summary End an admin impersonation session and restore the admin identity
  */
 export const StopImpersonatingResponse = zod.object({
@@ -347,6 +396,59 @@ export const AdminListUsersResponseItem = zod.object({
   "school": zod.string().nullable()
 })
 export const AdminListUsersResponse = zod.array(AdminListUsersResponseItem)
+
+
+/**
+ * @summary Create a user account with local login credentials (admin only)
+ */
+export const adminCreateUserBodyEmailMin = 3;
+
+export const adminCreateUserBodyPasswordMin = 8;
+
+
+
+export const AdminCreateUserBody = zod.object({
+  "email": zod.string().min(adminCreateUserBodyEmailMin),
+  "firstName": zod.string().nullish(),
+  "lastName": zod.string().nullish(),
+  "password": zod.string().min(adminCreateUserBodyPasswordMin).optional().describe('Omit to have the server generate a temporary password.'),
+  "isAdmin": zod.boolean().optional()
+})
+
+export const AdminCreateUserResponse = zod.object({
+  "user": zod.object({
+  "id": zod.string(),
+  "email": zod.email().nullable(),
+  "firstName": zod.string().nullable(),
+  "lastName": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "isAdmin": zod.boolean(),
+  "yearLevel": zod.number().nullable(),
+  "courseType": zod.string().nullable(),
+  "school": zod.string().nullable()
+}),
+  "temporaryPassword": zod.string().nullable()
+})
+
+
+/**
+ * @summary Set or reset a user's password (admin only)
+ */
+export const AdminSetUserPasswordParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const adminSetUserPasswordBodyPasswordMin = 8;
+
+
+
+export const AdminSetUserPasswordBody = zod.object({
+  "password": zod.string().min(adminSetUserPasswordBodyPasswordMin).optional().describe('Omit to have the server generate a temporary password.')
+})
+
+export const AdminSetUserPasswordResponse = zod.object({
+  "temporaryPassword": zod.string().nullable()
+})
 
 
 /**

@@ -3,12 +3,18 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import {
   GetCurrentAuthUserResponse,
   StopImpersonatingResponse,
+  LoginWithPasswordBody,
+  LoginWithPasswordResponse,
+  ChangeMyPasswordBody,
+  ChangeMyPasswordResponse,
   ExchangeMobileAuthorizationCodeBody,
   ExchangeMobileAuthorizationCodeResponse,
   LogoutMobileSessionResponse,
 } from "@workspace/api-zod";
+import { eq, sql } from "drizzle-orm";
 import { db, usersTable } from "@workspace/db";
 import { ensureBootstrapAdmin } from "../lib/adminAuth";
+import { verifyPassword, hashPassword } from "../lib/passwords";
 import {
   clearSession,
   getOidcConfig,
@@ -34,13 +40,15 @@ function getOrigin(req: Request): string {
   return `${proto}://${host}`;
 }
 
-function setSessionCookie(res: Response, sid: string) {
+function setSessionCookie(res: Response, sid: string, maxAge?: number | null) {
   res.cookie(SESSION_COOKIE, sid, {
     httpOnly: true,
     secure: true,
     sameSite: "lax",
     path: "/",
-    maxAge: SESSION_TTL,
+    // maxAge null => browser-session cookie (cleared when the browser closes);
+    // used for local logins without "remember me".
+    ...(maxAge === null ? {} : { maxAge: maxAge ?? SESSION_TTL }),
   });
 }
 
@@ -98,6 +106,111 @@ router.get("/auth/user", (req: Request, res: Response) => {
       impersonator: req.isAuthenticated() ? (req.impersonator ?? null) : null,
     }),
   );
+});
+
+// Interim local auth (email + password) so testers can sign in without Replit
+// accounts. Replaced wholesale by Clerk after the testing phase.
+const REMEMBER_ME_TTL = 30 * 24 * 60 * 60 * 1000; // 30 days
+const SHORT_SESSION_TTL = 24 * 60 * 60 * 1000; // 1 day server-side
+
+router.post("/auth/login", async (req: Request, res: Response) => {
+  const parsed = LoginWithPasswordBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(401).json({ error: "Invalid email or password" });
+    return;
+  }
+  const { email, password, rememberMe } = parsed.data;
+
+  const [user] = await db
+    .select()
+    .from(usersTable)
+    .where(sql`lower(${usersTable.email}) = ${email.trim().toLowerCase()}`);
+
+  const valid = user
+    ? await verifyPassword(password, user.passwordHash)
+    : // Burn comparable time so missing accounts aren't distinguishable.
+      await verifyPassword(password, null).then(() => false);
+  if (!user || !valid) {
+    await new Promise((r) => setTimeout(r, 250));
+    res.status(401).json({ error: "Invalid email or password" });
+    return;
+  }
+
+  await ensureBootstrapAdmin(user);
+
+  const sessionData: SessionData = {
+    user: {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      profileImageUrl: user.profileImageUrl,
+    },
+    access_token: "",
+    provider: "local",
+  };
+
+  const sid = await createSession(
+    sessionData,
+    rememberMe ? REMEMBER_ME_TTL : SHORT_SESSION_TTL,
+  );
+  setSessionCookie(res, sid, rememberMe ? REMEMBER_ME_TTL : null);
+
+  res.json(
+    LoginWithPasswordResponse.parse({
+      user: sessionData.user,
+      impersonator: null,
+    }),
+  );
+});
+
+router.post("/auth/change-password", async (req: Request, res: Response) => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Not authenticated" });
+    return;
+  }
+  // Impersonation invariant: an admin viewing as another user must not be
+  // able to change that user's password.
+  if (req.impersonator) {
+    res
+      .status(400)
+      .json({ error: "You can't change a password while impersonating" });
+    return;
+  }
+  const parsed = ChangeMyPasswordBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Password must be at least 8 characters" });
+    return;
+  }
+  const { currentPassword, newPassword } = parsed.data;
+
+  const [user] = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.id, req.user.id));
+  if (!user) {
+    res.status(401).json({ error: "Not authenticated" });
+    return;
+  }
+
+  // Accounts that only ever used Replit OIDC have no password yet; they may
+  // set one without a current password. Otherwise the current one is required.
+  if (user.passwordHash != null) {
+    const ok =
+      currentPassword != null &&
+      (await verifyPassword(currentPassword, user.passwordHash));
+    if (!ok) {
+      res.status(400).json({ error: "Current password is incorrect" });
+      return;
+    }
+  }
+
+  await db
+    .update(usersTable)
+    .set({ passwordHash: await hashPassword(newPassword) })
+    .where(eq(usersTable.id, user.id));
+
+  res.json(ChangeMyPasswordResponse.parse({ success: true }));
 });
 
 // Deliberately NOT admin-gated: while impersonating a non-admin the session's
@@ -233,12 +346,18 @@ router.get("/callback", async (req: Request, res: Response) => {
 });
 
 router.get("/logout", async (req: Request, res: Response) => {
-  const config = await getOidcConfig();
   const origin = getOrigin(req);
-
   const sid = getSessionId(req);
+  const session = sid ? await getSession(sid) : null;
   await clearSession(res, sid);
 
+  // Local email+password sessions have no OIDC provider session to end.
+  if (session?.provider === "local") {
+    res.redirect(origin);
+    return;
+  }
+
+  const config = await getOidcConfig();
   const endSessionUrl = oidc.buildEndSessionUrl(config, {
     client_id: process.env.REPL_ID!,
     post_logout_redirect_uri: origin,

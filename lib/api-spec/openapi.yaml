@@ -54,6 +54,62 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AuthUserEnvelope"
+  /auth/login:
+    post:
+      tags: [Auth]
+      operationId: loginWithPassword
+      summary: Sign in with email and password (interim local auth until Clerk)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginBody"
+      responses:
+        "200":
+          description: Signed in.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUserEnvelope"
+        "401":
+          description: Invalid email or password.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /auth/change-password:
+    post:
+      tags: [Auth]
+      operationId: changeMyPassword
+      summary: Set or change the signed-in user's password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordBody"
+      responses:
+        "200":
+          description: Password updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResult"
+        "400":
+          description: Invalid request (wrong current password, weak password, or impersonating).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
   /auth/stop-impersonating:
     post:
       tags: [Auth]
@@ -449,6 +505,80 @@ paths:
                   $ref: "#/components/schemas/AdminUserSummary"
         "403":
           description: Not an admin.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    post:
+      tags: [Admin]
+      operationId: adminCreateUser
+      summary: Create a user account with local login credentials (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserAccountBody"
+      responses:
+        "201":
+          description: >
+            Account created. temporaryPassword is present when the server
+            generated one (no password supplied).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminCreateUserResult"
+        "400":
+          description: Invalid request (e.g. email already in use).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Not an admin.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /admin/users/{id}/password:
+    put:
+      tags: [Admin]
+      operationId: adminSetUserPassword
+      summary: Set or reset a user's password (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminSetPasswordBody"
+      responses:
+        "200":
+          description: Password set. temporaryPassword is present when generated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminSetPasswordResult"
+        "400":
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Not an admin.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: No such user.
           content:
             application/json:
               schema:
@@ -1241,6 +1371,79 @@ components:
       properties:
         isAdmin:
           type: boolean
+
+    LoginBody:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          minLength: 3
+        password:
+          type: string
+          minLength: 1
+        rememberMe:
+          type: boolean
+
+    ChangePasswordBody:
+      type: object
+      required: [newPassword]
+      properties:
+        currentPassword:
+          description: Required when the account already has a password.
+          type: string
+        newPassword:
+          type: string
+          minLength: 8
+
+    SuccessResult:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+
+    CreateUserAccountBody:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          minLength: 3
+        firstName:
+          type: [string, "null"]
+        lastName:
+          type: [string, "null"]
+        password:
+          description: Omit to have the server generate a temporary password.
+          type: string
+          minLength: 8
+        isAdmin:
+          type: boolean
+
+    AdminCreateUserResult:
+      type: object
+      required: [user, temporaryPassword]
+      properties:
+        user:
+          $ref: "#/components/schemas/AdminUserSummary"
+        temporaryPassword:
+          type: [string, "null"]
+
+    AdminSetPasswordBody:
+      type: object
+      properties:
+        password:
+          description: Omit to have the server generate a temporary password.
+          type: string
+          minLength: 8
+
+    AdminSetPasswordResult:
+      type: object
+      required: [temporaryPassword]
+      properties:
+        temporaryPassword:
+          type: [string, "null"]
 
     ProgressRecord:
       type: object

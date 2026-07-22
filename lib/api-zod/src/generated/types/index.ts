@@ -6,16 +6,21 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './adminCreateUserResult';
 export * from './adminListDocumentsParams';
+export * from './adminSetPasswordBody';
+export * from './adminSetPasswordResult';
 export * from './adminStatus';
 export * from './adminUserSummary';
 export * from './authorizationSessionHeaderParameter';
 export * from './authUser';
 export * from './authUserEnvelope';
 export * from './beginBrowserLoginParams';
+export * from './changePasswordBody';
 export * from './contentType';
 export * from './courseType';
 export * from './createDocumentBody';
+export * from './createUserAccountBody';
 export * from './documentDetail';
 export * from './documentStatus';
 export * from './documentSummary';
@@ -26,6 +31,7 @@ export * from './healthStatus';
 export * from './listDocumentsParams';
 export * from './listMetalanguageTermsParams';
 export * from './listTextsParams';
+export * from './loginBody';
 export * from './logoutSuccess';
 export * from './metalanguageTerm';
 export * from './mobileTokenExchangeRequest';
@@ -34,6 +40,7 @@ export * from './progressRecord';
 export * from './setUserAdminBody';
 export * from './studentProfile';
 export * from './studentProfileEnvelope';
+export * from './successResult';
 export * from './taskType';
 export * from './text';
 export * from './textRef';

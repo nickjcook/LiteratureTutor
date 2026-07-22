@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { Link } from "wouter";
-import { LogOut, KeyRound, LayoutDashboard, UserRound, Cog } from "lucide-react";
+import { LogOut, KeyRound, LayoutDashboard, UserRound, UsersRound, Cog } from "lucide-react";
 import { useAuth } from "@workspace/replit-auth-web";
 import {
   useGetAdminStatus,
@@ -15,7 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { toast } from "@/hooks/use-toast";
+import { ChangePasswordDialog } from "./ChangePasswordDialog";
 import type { AuthUser } from "@workspace/replit-auth-web";
 
 function displayName(user: AuthUser): string {
@@ -33,6 +34,7 @@ function initials(user: AuthUser): string {
 
 export function UserMenu() {
   const { isLoading, isAuthenticated, user, login, logout } = useAuth();
+  const [passwordOpen, setPasswordOpen] = useState(false);
   const { data: adminStatus } = useGetAdminStatus({
     query: { enabled: isAuthenticated, queryKey: getGetAdminStatusQueryKey() },
   });
@@ -48,6 +50,8 @@ export function UserMenu() {
   }
 
   return (
+    <>
+    <ChangePasswordDialog open={passwordOpen} onOpenChange={setPasswordOpen} />
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
@@ -89,6 +93,12 @@ export function UserMenu() {
                 Admin
               </Link>
             </DropdownMenuItem>
+            <DropdownMenuItem asChild data-testid="menu-admin-users">
+              <Link href="/admin/users">
+                <UsersRound className="mr-2 h-4 w-4" aria-hidden />
+                Users
+              </Link>
+            </DropdownMenuItem>
             <DropdownMenuItem asChild data-testid="menu-admin-settings">
               <Link href="/admin/settings">
                 <Cog className="mr-2 h-4 w-4" aria-hidden />
@@ -100,13 +110,7 @@ export function UserMenu() {
 
         <DropdownMenuItem
           data-testid="menu-change-password"
-          onSelect={() =>
-            toast({
-              title: "Password management coming soon",
-              description:
-                "Changing your password will be available once the new Clerk sign-in is enabled.",
-            })
-          }
+          onSelect={() => setPasswordOpen(true)}
         >
           <KeyRound className="mr-2 h-4 w-4" aria-hidden />
           Change password
@@ -119,5 +123,6 @@ export function UserMenu() {
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+    </>
   );
 }

@@ -66,6 +66,9 @@ export function Header() {
               <Button asChild variant="ghost" size="sm" data-testid="link-admin">
                 <Link href="/admin">Admin</Link>
               </Button>
+              <Button asChild variant="ghost" size="sm" data-testid="link-admin-users">
+                <Link href="/admin/users">Users</Link>
+              </Button>
               <Button asChild variant="ghost" size="sm" data-testid="link-admin-settings">
                 <Link href="/admin/settings">Settings</Link>
               </Button>

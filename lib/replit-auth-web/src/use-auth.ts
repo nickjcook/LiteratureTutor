@@ -50,8 +50,11 @@ export function useAuth(): AuthState {
   }, []);
 
   const login = useCallback(() => {
-    const base = import.meta.env.BASE_URL.replace(/\/+$/, "") || "/";
-    window.location.href = `/api/login?returnTo=${encodeURIComponent(base)}`;
+    // Interim local auth: send users to the in-app email+password page rather
+    // than the Replit OIDC flow (testers have no Replit accounts). The OIDC
+    // routes remain live server-side as a fallback.
+    const base = import.meta.env.BASE_URL.replace(/\/+$/, "");
+    window.location.href = `${base}/login`;
   }, []);
 
   const logout = useCallback(() => {

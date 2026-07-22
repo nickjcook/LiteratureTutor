@@ -20,13 +20,18 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AdminCreateUserResult,
   AdminListDocumentsParams,
+  AdminSetPasswordBody,
+  AdminSetPasswordResult,
   AdminStatus,
   AdminUserSummary,
   AuthUserEnvelope,
   BeginBrowserLoginParams,
+  ChangePasswordBody,
   ContentType,
   CreateDocumentBody,
+  CreateUserAccountBody,
   DocumentDetail,
   DocumentSummary,
   DocumentVersion,
@@ -36,6 +41,7 @@ import type {
   ListDocumentsParams,
   ListMetalanguageTermsParams,
   ListTextsParams,
+  LoginBody,
   LogoutSuccess,
   MetalanguageTerm,
   MobileTokenExchangeRequest,
@@ -44,6 +50,7 @@ import type {
   SetUserAdminBody,
   StudentProfile,
   StudentProfileEnvelope,
+  SuccessResult,
   Text,
   UpdateDocumentBody,
   UpsertStudentProfileBody
@@ -230,6 +237,148 @@ export function useGetCurrentAuthUser<TData = Awaited<ReturnType<typeof getCurre
 
 
 
+
+export const getLoginWithPasswordUrl = () => {
+
+
+
+
+  return `/api/auth/login`
+}
+
+/**
+ * @summary Sign in with email and password (interim local auth until Clerk)
+ */
+export const loginWithPassword = async (loginBody: LoginBody, options?: RequestInit): Promise<AuthUserEnvelope> => {
+
+  return customFetch<AuthUserEnvelope>(getLoginWithPasswordUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(loginBody)
+  }
+);}
+
+
+
+
+
+export const getLoginWithPasswordMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof loginWithPassword>>, TError,{data: BodyType<LoginBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof loginWithPassword>>, TError,{data: BodyType<LoginBody>}, TContext> => {
+
+const mutationKey = ['loginWithPassword'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof loginWithPassword>>, {data: BodyType<LoginBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  loginWithPassword(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type LoginWithPasswordMutationResult = NonNullable<Awaited<ReturnType<typeof loginWithPassword>>>
+    export type LoginWithPasswordMutationBody = BodyType<LoginBody>
+    export type LoginWithPasswordMutationError = ErrorType<ErrorEnvelope>
+
+    /**
+ * @summary Sign in with email and password (interim local auth until Clerk)
+ */
+export const useLoginWithPassword = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof loginWithPassword>>, TError,{data: BodyType<LoginBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof loginWithPassword>>,
+        TError,
+        {data: BodyType<LoginBody>},
+        TContext
+      > => {
+      return useMutation(getLoginWithPasswordMutationOptions(options));
+    }
+
+export const getChangeMyPasswordUrl = () => {
+
+
+
+
+  return `/api/auth/change-password`
+}
+
+/**
+ * @summary Set or change the signed-in user's password
+ */
+export const changeMyPassword = async (changePasswordBody: ChangePasswordBody, options?: RequestInit): Promise<SuccessResult> => {
+
+  return customFetch<SuccessResult>(getChangeMyPasswordUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(changePasswordBody)
+  }
+);}
+
+
+
+
+
+export const getChangeMyPasswordMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof changeMyPassword>>, TError,{data: BodyType<ChangePasswordBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof changeMyPassword>>, TError,{data: BodyType<ChangePasswordBody>}, TContext> => {
+
+const mutationKey = ['changeMyPassword'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof changeMyPassword>>, {data: BodyType<ChangePasswordBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  changeMyPassword(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ChangeMyPasswordMutationResult = NonNullable<Awaited<ReturnType<typeof changeMyPassword>>>
+    export type ChangeMyPasswordMutationBody = BodyType<ChangePasswordBody>
+    export type ChangeMyPasswordMutationError = ErrorType<ErrorEnvelope>
+
+    /**
+ * @summary Set or change the signed-in user's password
+ */
+export const useChangeMyPassword = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof changeMyPassword>>, TError,{data: BodyType<ChangePasswordBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof changeMyPassword>>,
+        TError,
+        {data: BodyType<ChangePasswordBody>},
+        TContext
+      > => {
+      return useMutation(getChangeMyPasswordMutationOptions(options));
+    }
 
 export const getStopImpersonatingUrl = () => {
 
@@ -1538,6 +1687,149 @@ export function useAdminListUsers<TData = Awaited<ReturnType<typeof adminListUse
 
 
 
+
+export const getAdminCreateUserUrl = () => {
+
+
+
+
+  return `/api/admin/users`
+}
+
+/**
+ * @summary Create a user account with local login credentials (admin only)
+ */
+export const adminCreateUser = async (createUserAccountBody: CreateUserAccountBody, options?: RequestInit): Promise<AdminCreateUserResult> => {
+
+  return customFetch<AdminCreateUserResult>(getAdminCreateUserUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createUserAccountBody)
+  }
+);}
+
+
+
+
+
+export const getAdminCreateUserMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminCreateUser>>, TError,{data: BodyType<CreateUserAccountBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof adminCreateUser>>, TError,{data: BodyType<CreateUserAccountBody>}, TContext> => {
+
+const mutationKey = ['adminCreateUser'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof adminCreateUser>>, {data: BodyType<CreateUserAccountBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  adminCreateUser(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AdminCreateUserMutationResult = NonNullable<Awaited<ReturnType<typeof adminCreateUser>>>
+    export type AdminCreateUserMutationBody = BodyType<CreateUserAccountBody>
+    export type AdminCreateUserMutationError = ErrorType<ErrorEnvelope>
+
+    /**
+ * @summary Create a user account with local login credentials (admin only)
+ */
+export const useAdminCreateUser = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminCreateUser>>, TError,{data: BodyType<CreateUserAccountBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof adminCreateUser>>,
+        TError,
+        {data: BodyType<CreateUserAccountBody>},
+        TContext
+      > => {
+      return useMutation(getAdminCreateUserMutationOptions(options));
+    }
+
+export const getAdminSetUserPasswordUrl = (id: string,) => {
+
+
+
+
+  return `/api/admin/users/${id}/password`
+}
+
+/**
+ * @summary Set or reset a user's password (admin only)
+ */
+export const adminSetUserPassword = async (id: string,
+    adminSetPasswordBody: AdminSetPasswordBody, options?: RequestInit): Promise<AdminSetPasswordResult> => {
+
+  return customFetch<AdminSetPasswordResult>(getAdminSetUserPasswordUrl(id),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(adminSetPasswordBody)
+  }
+);}
+
+
+
+
+
+export const getAdminSetUserPasswordMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminSetUserPassword>>, TError,{id: string;data: BodyType<AdminSetPasswordBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof adminSetUserPassword>>, TError,{id: string;data: BodyType<AdminSetPasswordBody>}, TContext> => {
+
+const mutationKey = ['adminSetUserPassword'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof adminSetUserPassword>>, {id: string;data: BodyType<AdminSetPasswordBody>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  adminSetUserPassword(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AdminSetUserPasswordMutationResult = NonNullable<Awaited<ReturnType<typeof adminSetUserPassword>>>
+    export type AdminSetUserPasswordMutationBody = BodyType<AdminSetPasswordBody>
+    export type AdminSetUserPasswordMutationError = ErrorType<ErrorEnvelope>
+
+    /**
+ * @summary Set or reset a user's password (admin only)
+ */
+export const useAdminSetUserPassword = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminSetUserPassword>>, TError,{id: string;data: BodyType<AdminSetPasswordBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof adminSetUserPassword>>,
+        TError,
+        {id: string;data: BodyType<AdminSetPasswordBody>},
+        TContext
+      > => {
+      return useMutation(getAdminSetUserPasswordMutationOptions(options));
+    }
 
 export const getAdminSetUserAdminUrl = (id: string,) => {
 

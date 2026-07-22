@@ -20,9 +20,15 @@ import {
   AdminClearUserProfileResponse,
   AdminImpersonateUserParams,
   AdminImpersonateUserResponse,
+  AdminCreateUserBody,
+  AdminCreateUserResponse,
+  AdminSetUserPasswordParams,
+  AdminSetUserPasswordBody,
+  AdminSetUserPasswordResponse,
 } from "@workspace/api-zod";
 import { requireAdmin } from "../../lib/adminAuth";
 import { getSessionId, getSession, updateSession } from "../../lib/auth";
+import { hashPassword, generatePassword } from "../../lib/passwords";
 
 const router: IRouter = Router();
 
@@ -129,6 +135,91 @@ router.put("/admin/users/:id/admin", async (req, res): Promise<void> => {
 
   const [row] = await selectUserSummaries().where(eq(usersTable.id, id));
   res.json(AdminSetUserAdminResponse.parse(shapeUser(row)));
+});
+
+// Create an account with local login credentials — the tester onboarding path.
+// If no password is supplied, a temporary one is generated and returned once.
+router.post("/admin/users", async (req, res): Promise<void> => {
+  const body = AdminCreateUserBody.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: "Invalid request" });
+    return;
+  }
+  const { email, firstName, lastName, password, isAdmin } = body.data;
+  const normalizedEmail = email.trim().toLowerCase();
+
+  const [existing] = await db
+    .select({ id: usersTable.id })
+    .from(usersTable)
+    .where(sql`lower(${usersTable.email}) = ${normalizedEmail}`);
+  if (existing) {
+    res.status(400).json({ error: "That email is already in use" });
+    return;
+  }
+
+  const temporaryPassword = password == null ? generatePassword() : null;
+  const passwordHash = await hashPassword(password ?? temporaryPassword!);
+
+  const [created] = await db
+    .insert(usersTable)
+    .values({
+      email: normalizedEmail,
+      firstName: firstName ?? null,
+      lastName: lastName ?? null,
+      passwordHash,
+    })
+    .returning();
+
+  if (isAdmin) {
+    await db
+      .insert(platformAdminsTable)
+      .values({ userId: created.id })
+      .onConflictDoNothing();
+  }
+
+  const [row] = await selectUserSummaries().where(eq(usersTable.id, created.id));
+  res.status(201).json(
+    AdminCreateUserResponse.parse({
+      user: shapeUser(row),
+      temporaryPassword,
+    }),
+  );
+});
+
+// Set or reset a user's password. Generates one if none supplied. Resetting
+// another user's password revokes their active sessions.
+router.put("/admin/users/:id/password", async (req, res): Promise<void> => {
+  const params = AdminSetUserPasswordParams.safeParse(req.params);
+  const body = AdminSetUserPasswordBody.safeParse(req.body ?? {});
+  if (!params.success || !body.success) {
+    res.status(400).json({ error: "Invalid request" });
+    return;
+  }
+  const { id } = params.data;
+
+  const [user] = await db
+    .select({ id: usersTable.id })
+    .from(usersTable)
+    .where(eq(usersTable.id, id));
+  if (!user) {
+    res.status(404).json({ error: "No such user" });
+    return;
+  }
+
+  const temporaryPassword = body.data.password == null ? generatePassword() : null;
+  await db
+    .update(usersTable)
+    .set({ passwordHash: await hashPassword(body.data.password ?? temporaryPassword!) })
+    .where(eq(usersTable.id, id));
+
+  const isSelf = req.isAuthenticated() && req.user.id === id;
+  if (!isSelf) {
+    await db
+      .delete(sessionsTable)
+      .where(sql`${sessionsTable.sess}->'user'->>'id' = ${id}`);
+  }
+
+  res.json(AdminSetUserPasswordResponse.parse({ temporaryPassword }));
 });
 
 // Admin can set any user's study profile — including their own, for testing

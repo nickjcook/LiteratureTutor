@@ -10,6 +10,7 @@ import CurriculumMap from "@/pages/CurriculumMap";
 import Library from "@/pages/Library";
 import DocumentView from "@/pages/DocumentView";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
+import Login from "@/pages/Login";
 import Terms from "@/pages/Terms";
 import Faq from "@/pages/Faq";
 import AdminDocumentList from "@/pages/admin/DocumentList";
@@ -23,6 +24,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Landing} />
+      <Route path="/login" component={Login} />
       <Route path="/onboarding" component={Onboarding} />
       <Route path="/map" component={CurriculumMap} />
       <Route path="/library" component={Library} />

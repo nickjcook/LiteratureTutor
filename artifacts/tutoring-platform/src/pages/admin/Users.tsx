@@ -5,9 +5,11 @@ import {
   ShieldCheck,
   ShieldOff,
   Trash2,
-  Info,
   UserCog,
   GraduationCap,
+  UserPlus,
+  KeyRound,
+  Copy,
 } from "lucide-react";
 import { useAuth } from "@workspace/replit-auth-web";
 import {
@@ -18,9 +20,12 @@ import {
   useAdminUpsertUserProfile,
   useAdminClearUserProfile,
   useAdminImpersonateUser,
+  useAdminCreateUser,
+  useAdminSetUserPassword,
   type AdminUserSummary,
   type CourseType,
 } from "@workspace/api-client-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useRequireAdmin } from "@/hooks/useRequireAdmin";
 import { Layout } from "@/components/Layout";
 import { COURSE_LABELS } from "@/components/DocumentCard";
@@ -87,6 +92,17 @@ export default function AdminUsers() {
   const [yearLevel, setYearLevel] = useState("");
   const [courseType, setCourseType] = useState("");
   const [school, setSchool] = useState("");
+
+  const [addOpen, setAddOpen] = useState(false);
+  const [addEmail, setAddEmail] = useState("");
+  const [addFirst, setAddFirst] = useState("");
+  const [addLast, setAddLast] = useState("");
+  const [addIsAdmin, setAddIsAdmin] = useState(false);
+  // One-time reveal of a server-generated password; shown until dismissed.
+  const [credentials, setCredentials] = useState<{
+    email: string;
+    password: string;
+  } | null>(null);
 
   const { data: users, isLoading } = useAdminListUsers({
     query: { enabled: isReady, queryKey: getAdminListUsersQueryKey() },
@@ -159,6 +175,46 @@ export default function AdminUsers() {
     },
   });
 
+  const createUser = useAdminCreateUser({
+    mutation: {
+      onSuccess: async (result) => {
+        await invalidate();
+        setAddOpen(false);
+        setAddEmail("");
+        setAddFirst("");
+        setAddLast("");
+        setAddIsAdmin(false);
+        if (result.temporaryPassword) {
+          setCredentials({
+            email: result.user.email ?? "",
+            password: result.temporaryPassword,
+          });
+        } else {
+          toast({ title: "User created" });
+        }
+      },
+      onError: mutationError("Couldn't create user"),
+    },
+  });
+
+  const setPassword = useAdminSetUserPassword({
+    mutation: {
+      onSuccess: async (result, vars) => {
+        await invalidate();
+        const target = users?.find((u) => u.id === vars.id);
+        if (result.temporaryPassword) {
+          setCredentials({
+            email: target?.email ?? "",
+            password: result.temporaryPassword,
+          });
+        } else {
+          toast({ title: "Password set" });
+        }
+      },
+      onError: mutationError("Couldn't reset password"),
+    },
+  });
+
   const impersonate = useAdminImpersonateUser({
     mutation: {
       onSuccess: () => {
@@ -202,25 +258,18 @@ export default function AdminUsers() {
   return (
     <Layout>
       <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6">
-        <div>
-          <h1 className="font-serif text-3xl font-semibold">Users</h1>
-          <p className="mt-1 text-muted-foreground">
-            Everyone with an account, newest first. Set study profiles, grant or
-            remove admin access, impersonate for testing, or delete an account.
-          </p>
-        </div>
-
-        <Card className="mt-6 border-primary/20 bg-primary/5">
-          <CardContent className="flex items-start gap-2 pt-4 text-sm text-muted-foreground">
-            <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-            <p>
-              <strong className="text-foreground">Adding a user:</strong> accounts are
-              created by signing in — ask the person to log in once with Replit and
-              they'll appear here, ready for you to manage. Fuller roles
-              (admin / advisor / member) arrive with the Clerk sign-in later.
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 className="font-serif text-3xl font-semibold">Users</h1>
+            <p className="mt-1 text-muted-foreground">
+              Everyone with an account, newest first. Create accounts, set study
+              profiles, reset passwords, impersonate for testing, or delete.
             </p>
-          </CardContent>
-        </Card>
+          </div>
+          <Button onClick={() => setAddOpen(true)} data-testid="button-add-user">
+            <UserPlus className="mr-1.5 h-4 w-4" aria-hidden /> Add user
+          </Button>
+        </div>
 
         <Card className="mt-6">
           <CardContent className="px-0 py-2">
@@ -315,6 +364,14 @@ export default function AdminUsers() {
                                 >
                                   <UserCog className="mr-2 h-4 w-4" aria-hidden />
                                   Impersonate
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  disabled={setPassword.isPending}
+                                  onSelect={() => setPassword.mutate({ id: user.id, data: {} })}
+                                  data-testid={`menu-reset-password-${user.id}`}
+                                >
+                                  <KeyRound className="mr-2 h-4 w-4" aria-hidden />
+                                  Reset password
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem
@@ -450,6 +507,133 @@ export default function AdminUsers() {
                 </Button>
               </DialogFooter>
             </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Create a tester/user account with local credentials. */}
+        <Dialog open={addOpen} onOpenChange={setAddOpen}>
+          <DialogContent className="sm:max-w-md">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (addEmail.trim() === "") return;
+                createUser.mutate({
+                  data: {
+                    email: addEmail.trim(),
+                    firstName: addFirst.trim() === "" ? null : addFirst.trim(),
+                    lastName: addLast.trim() === "" ? null : addLast.trim(),
+                    isAdmin: addIsAdmin,
+                  },
+                });
+              }}
+            >
+              <DialogHeader>
+                <DialogTitle className="font-serif">Add user</DialogTitle>
+                <DialogDescription>
+                  Creates an account with a generated temporary password —
+                  shown once, so copy it for the tester.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="add-first">First name</Label>
+                    <Input
+                      id="add-first"
+                      value={addFirst}
+                      onChange={(e) => setAddFirst(e.target.value)}
+                      data-testid="input-add-first"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="add-last">Last name</Label>
+                    <Input
+                      id="add-last"
+                      value={addLast}
+                      onChange={(e) => setAddLast(e.target.value)}
+                      data-testid="input-add-last"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="add-email">Email (their sign-in name)</Label>
+                  <Input
+                    id="add-email"
+                    type="email"
+                    value={addEmail}
+                    onChange={(e) => setAddEmail(e.target.value)}
+                    placeholder="tester@example.com"
+                    data-testid="input-add-email"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="add-admin"
+                    checked={addIsAdmin}
+                    onCheckedChange={(v) => setAddIsAdmin(v === true)}
+                    data-testid="checkbox-add-admin"
+                  />
+                  <Label htmlFor="add-admin" className="font-normal">
+                    Grant admin access
+                  </Label>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button
+                  type="submit"
+                  disabled={addEmail.trim() === "" || createUser.isPending}
+                  data-testid="button-create-user"
+                >
+                  {createUser.isPending ? "Creating…" : "Create user"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* One-time reveal of generated credentials. */}
+        <Dialog
+          open={credentials != null}
+          onOpenChange={(open) => !open && setCredentials(null)}
+        >
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="font-serif">Sign-in details</DialogTitle>
+              <DialogDescription>
+                Copy these now — the password is not shown again. The user can
+                change it after signing in.
+              </DialogDescription>
+            </DialogHeader>
+            {credentials && (
+              <div className="space-y-2 rounded-md border bg-muted/40 p-4 font-mono text-sm">
+                <p data-testid="text-cred-email">
+                  <span className="text-muted-foreground">email: </span>
+                  {credentials.email}
+                </p>
+                <p data-testid="text-cred-password">
+                  <span className="text-muted-foreground">password: </span>
+                  {credentials.password}
+                </p>
+              </div>
+            )}
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  if (!credentials) return;
+                  navigator.clipboard.writeText(
+                    `email: ${credentials.email}\npassword: ${credentials.password}`,
+                  );
+                  toast({ title: "Copied to clipboard" });
+                }}
+                data-testid="button-copy-credentials"
+              >
+                <Copy className="mr-1.5 h-4 w-4" aria-hidden /> Copy
+              </Button>
+              <Button onClick={() => setCredentials(null)} data-testid="button-close-credentials">
+                Done
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
 
