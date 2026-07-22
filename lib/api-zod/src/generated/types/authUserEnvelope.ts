@@ -9,4 +9,6 @@ import type { AuthUser } from './authUser';
 
 export interface AuthUserEnvelope {
   user: AuthUser | null;
+  /** Set when an admin is currently impersonating another user: the admin's own identity. Absent or null otherwise. */
+  impersonator?: AuthUser | null;
 }

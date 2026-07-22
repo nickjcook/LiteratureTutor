@@ -31,7 +31,35 @@ export const GetCurrentAuthUserResponse = zod.object({
   "firstName": zod.string().nullable(),
   "lastName": zod.string().nullable(),
   "profileImageUrl": zod.string().nullable()
-}),zod.null()])
+}),zod.null()]),
+  "impersonator": zod.union([zod.object({
+  "id": zod.string(),
+  "email": zod.email().nullable(),
+  "firstName": zod.string().nullable(),
+  "lastName": zod.string().nullable(),
+  "profileImageUrl": zod.string().nullable()
+}),zod.null()]).optional().describe('Set when an admin is currently impersonating another user: the admin\'s own identity. Absent or null otherwise.\n')
+})
+
+
+/**
+ * @summary End an admin impersonation session and restore the admin identity
+ */
+export const StopImpersonatingResponse = zod.object({
+  "user": zod.union([zod.object({
+  "id": zod.string(),
+  "email": zod.email().nullable(),
+  "firstName": zod.string().nullable(),
+  "lastName": zod.string().nullable(),
+  "profileImageUrl": zod.string().nullable()
+}),zod.null()]),
+  "impersonator": zod.union([zod.object({
+  "id": zod.string(),
+  "email": zod.email().nullable(),
+  "firstName": zod.string().nullable(),
+  "lastName": zod.string().nullable(),
+  "profileImageUrl": zod.string().nullable()
+}),zod.null()]).optional().describe('Set when an admin is currently impersonating another user: the admin\'s own identity. Absent or null otherwise.\n')
 })
 
 
@@ -342,6 +370,82 @@ export const AdminSetUserAdminResponse = zod.object({
   "yearLevel": zod.number().nullable(),
   "courseType": zod.string().nullable(),
   "school": zod.string().nullable()
+})
+
+
+/**
+ * @summary Set or update a user's study profile (admin only)
+ */
+export const AdminUpsertUserProfileParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const adminUpsertUserProfileBodyYearLevelMin = 7;
+export const adminUpsertUserProfileBodyYearLevelMax = 12;
+
+
+
+export const AdminUpsertUserProfileBody = zod.object({
+  "yearLevel": zod.number().min(adminUpsertUserProfileBodyYearLevelMin).max(adminUpsertUserProfileBodyYearLevelMax),
+  "courseType": zod.enum(['literature_atar', 'english_atar', 'general_english']),
+  "school": zod.string().nullish()
+})
+
+export const AdminUpsertUserProfileResponse = zod.object({
+  "id": zod.string(),
+  "email": zod.email().nullable(),
+  "firstName": zod.string().nullable(),
+  "lastName": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "isAdmin": zod.boolean(),
+  "yearLevel": zod.number().nullable(),
+  "courseType": zod.string().nullable(),
+  "school": zod.string().nullable()
+})
+
+
+/**
+ * @summary Clear a user's study profile so onboarding runs again (admin only)
+ */
+export const AdminClearUserProfileParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const AdminClearUserProfileResponse = zod.object({
+  "id": zod.string(),
+  "email": zod.email().nullable(),
+  "firstName": zod.string().nullable(),
+  "lastName": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "isAdmin": zod.boolean(),
+  "yearLevel": zod.number().nullable(),
+  "courseType": zod.string().nullable(),
+  "school": zod.string().nullable()
+})
+
+
+/**
+ * @summary Start impersonating a user for testing (admin only)
+ */
+export const AdminImpersonateUserParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const AdminImpersonateUserResponse = zod.object({
+  "user": zod.union([zod.object({
+  "id": zod.string(),
+  "email": zod.email().nullable(),
+  "firstName": zod.string().nullable(),
+  "lastName": zod.string().nullable(),
+  "profileImageUrl": zod.string().nullable()
+}),zod.null()]),
+  "impersonator": zod.union([zod.object({
+  "id": zod.string(),
+  "email": zod.email().nullable(),
+  "firstName": zod.string().nullable(),
+  "lastName": zod.string().nullable(),
+  "profileImageUrl": zod.string().nullable()
+}),zod.null()]).optional().describe('Set when an admin is currently impersonating another user: the admin\'s own identity. Absent or null otherwise.\n')
 })
 
 

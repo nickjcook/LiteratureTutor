@@ -103,13 +103,17 @@ export default function AdminSettings() {
           </SectionCard>
 
           <SectionCard icon={KeyRound} title="Authentication &amp; roles">
-            <div className="mb-2">
-              <Badge variant="secondary">Pending setup</Badge>
-            </div>
             <p>
-              Sign-in is moving to <strong>Clerk</strong>, with three roles: admin,
-              advisor and member. Requires Clerk API keys and a data-residency /
-              privacy sign-off before it can be enabled.
+              Sign-in uses Replit Auth. <strong>Bootstrap admins:</strong> the{" "}
+              <code className="rounded bg-muted px-1">ADMIN_EMAILS</code> secret
+              (comma-separated emails, set in Replit → Secrets) makes those accounts
+              admins automatically whenever they log in — the safety net for a fresh
+              deploy or a lost admin grant. It is not a password bypass: identity is
+              still verified by Replit at sign-in.
+            </p>
+            <p className="mt-2 text-xs">
+              Later: <strong>Clerk</strong> with admin / advisor / member roles
+              (needs keys + data-residency sign-off).
             </p>
           </SectionCard>
 

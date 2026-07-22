@@ -13,8 +13,16 @@ import {
   AdminSetUserAdminBody,
   AdminSetUserAdminResponse,
   AdminDeleteUserParams,
+  AdminUpsertUserProfileParams,
+  AdminUpsertUserProfileBody,
+  AdminUpsertUserProfileResponse,
+  AdminClearUserProfileParams,
+  AdminClearUserProfileResponse,
+  AdminImpersonateUserParams,
+  AdminImpersonateUserResponse,
 } from "@workspace/api-zod";
 import { requireAdmin } from "../../lib/adminAuth";
+import { getSessionId, getSession, updateSession } from "../../lib/auth";
 
 const router: IRouter = Router();
 
@@ -122,6 +130,128 @@ router.put("/admin/users/:id/admin", async (req, res): Promise<void> => {
   const [row] = await selectUserSummaries().where(eq(usersTable.id, id));
   res.json(AdminSetUserAdminResponse.parse(shapeUser(row)));
 });
+
+// Admin can set any user's study profile — including their own, for testing
+// different years/courses without re-running onboarding.
+router.put("/admin/users/:id/profile", async (req, res): Promise<void> => {
+  const params = AdminUpsertUserProfileParams.safeParse(req.params);
+  const body = AdminUpsertUserProfileBody.safeParse(req.body);
+  if (!params.success || !body.success) {
+    res.status(400).json({ error: "Invalid request" });
+    return;
+  }
+  const { id } = params.data;
+
+  const [user] = await db
+    .select({ id: usersTable.id })
+    .from(usersTable)
+    .where(eq(usersTable.id, id));
+  if (!user) {
+    res.status(404).json({ error: "No such user" });
+    return;
+  }
+
+  await db
+    .insert(studentProfilesTable)
+    .values({ userId: id, ...body.data })
+    .onConflictDoUpdate({
+      target: studentProfilesTable.userId,
+      set: { ...body.data, updatedAt: new Date() },
+    });
+
+  const [row] = await selectUserSummaries().where(eq(usersTable.id, id));
+  res.json(AdminUpsertUserProfileResponse.parse(shapeUser(row)));
+});
+
+// Clearing the profile sends that user back through onboarding on next visit.
+router.delete("/admin/users/:id/profile", async (req, res): Promise<void> => {
+  const params = AdminClearUserProfileParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: "Invalid request" });
+    return;
+  }
+  const { id } = params.data;
+
+  const [user] = await db
+    .select({ id: usersTable.id })
+    .from(usersTable)
+    .where(eq(usersTable.id, id));
+  if (!user) {
+    res.status(404).json({ error: "No such user" });
+    return;
+  }
+
+  await db
+    .delete(studentProfilesTable)
+    .where(eq(studentProfilesTable.userId, id));
+
+  const [row] = await selectUserSummaries().where(eq(usersTable.id, id));
+  res.json(AdminClearUserProfileResponse.parse(shapeUser(row)));
+});
+
+// Swap this session's effective user to the target, remembering the admin so
+// /auth/stop-impersonating can restore them. The whole API then behaves as the
+// target user — profile, progress, the lot — which is the point.
+router.post(
+  "/admin/users/:id/impersonate",
+  async (req, res): Promise<void> => {
+    const params = AdminImpersonateUserParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: "Invalid request" });
+      return;
+    }
+    const { id } = params.data;
+
+    if (req.isAuthenticated() && req.user.id === id) {
+      res.status(400).json({ error: "You can't impersonate yourself" });
+      return;
+    }
+
+    const sid = getSessionId(req);
+    const session = sid ? await getSession(sid) : null;
+    if (!sid || !session) {
+      res.status(400).json({ error: "Invalid request" });
+      return;
+    }
+    if (session.impersonator) {
+      res
+        .status(400)
+        .json({ error: "Already impersonating — stop impersonating first" });
+      return;
+    }
+
+    const [target] = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.id, id));
+    if (!target) {
+      res.status(404).json({ error: "No such user" });
+      return;
+    }
+
+    req.log.info(
+      { adminId: session.user.id, targetId: target.id },
+      "Impersonation started",
+    );
+
+    session.impersonator = session.user;
+    session.user = {
+      id: target.id,
+      email: target.email,
+      firstName: target.firstName,
+      lastName: target.lastName,
+      profileImageUrl: target.profileImageUrl,
+    };
+    await updateSession(sid, session);
+
+    res.json(
+      AdminImpersonateUserResponse.parse({
+        user: session.user,
+        impersonator: session.impersonator,
+      }),
+    );
+  },
+);
 
 router.delete("/admin/users/:id", async (req, res): Promise<void> => {
   const params = AdminDeleteUserParams.safeParse(req.params);

@@ -1,18 +1,33 @@
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { MoreHorizontal, ShieldCheck, ShieldOff, Trash2, Info } from "lucide-react";
+import {
+  MoreHorizontal,
+  ShieldCheck,
+  ShieldOff,
+  Trash2,
+  Info,
+  UserCog,
+  GraduationCap,
+} from "lucide-react";
 import { useAuth } from "@workspace/replit-auth-web";
 import {
   useAdminListUsers,
   getAdminListUsersQueryKey,
   useAdminSetUserAdmin,
   useAdminDeleteUser,
+  useAdminUpsertUserProfile,
+  useAdminClearUserProfile,
+  useAdminImpersonateUser,
   type AdminUserSummary,
+  type CourseType,
 } from "@workspace/api-client-react";
 import { useRequireAdmin } from "@/hooks/useRequireAdmin";
 import { Layout } from "@/components/Layout";
+import { COURSE_LABELS } from "@/components/DocumentCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -23,10 +38,26 @@ import {
 } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
@@ -40,6 +71,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
 
+const YEAR_LEVELS = [7, 8, 9, 10, 11, 12];
+
 function fullName(user: { firstName: string | null; lastName: string | null }) {
   return [user.firstName, user.lastName].filter(Boolean).join(" ") || "—";
 }
@@ -48,7 +81,12 @@ export default function AdminUsers() {
   const { isReady, isChecking } = useRequireAdmin();
   const { user: me } = useAuth();
   const queryClient = useQueryClient();
+
   const [userToDelete, setUserToDelete] = useState<AdminUserSummary | null>(null);
+  const [userToEdit, setUserToEdit] = useState<AdminUserSummary | null>(null);
+  const [yearLevel, setYearLevel] = useState("");
+  const [courseType, setCourseType] = useState("");
+  const [school, setSchool] = useState("");
 
   const { data: users, isLoading } = useAdminListUsers({
     query: { enabled: isReady, queryKey: getAdminListUsersQueryKey() },
@@ -56,6 +94,13 @@ export default function AdminUsers() {
 
   const invalidate = () =>
     queryClient.invalidateQueries({ queryKey: getAdminListUsersQueryKey() });
+
+  const mutationError = (title: string) => (err: unknown) =>
+    toast({
+      title,
+      description: err instanceof Error ? err.message : "Unexpected error",
+      variant: "destructive",
+    });
 
   const setAdmin = useAdminSetUserAdmin({
     mutation: {
@@ -66,12 +111,7 @@ export default function AdminUsers() {
           description: `${fullName(updated)} (${updated.email ?? updated.id})`,
         });
       },
-      onError: (err) =>
-        toast({
-          title: "Couldn't update role",
-          description: err instanceof Error ? err.message : "Unexpected error",
-          variant: "destructive",
-        }),
+      onError: mutationError("Couldn't update role"),
     },
   });
 
@@ -83,15 +123,71 @@ export default function AdminUsers() {
         setUserToDelete(null);
       },
       onError: (err) => {
-        toast({
-          title: "Couldn't delete user",
-          description: err instanceof Error ? err.message : "Unexpected error",
-          variant: "destructive",
-        });
+        mutationError("Couldn't delete user")(err);
         setUserToDelete(null);
       },
     },
   });
+
+  const upsertProfile = useAdminUpsertUserProfile({
+    mutation: {
+      onSuccess: async (updated) => {
+        await invalidate();
+        toast({
+          title: "Profile updated",
+          description: `${fullName(updated)} — Year ${updated.yearLevel}, ${
+            COURSE_LABELS[updated.courseType ?? ""] ?? updated.courseType
+          }`,
+        });
+        setUserToEdit(null);
+      },
+      onError: mutationError("Couldn't update profile"),
+    },
+  });
+
+  const clearProfile = useAdminClearUserProfile({
+    mutation: {
+      onSuccess: async (updated) => {
+        await invalidate();
+        toast({
+          title: "Profile cleared",
+          description: `${fullName(updated)} will go through onboarding again.`,
+        });
+        setUserToEdit(null);
+      },
+      onError: mutationError("Couldn't clear profile"),
+    },
+  });
+
+  const impersonate = useAdminImpersonateUser({
+    mutation: {
+      onSuccess: () => {
+        // Full reload as the target user; all cached queries must go.
+        window.location.href = import.meta.env.BASE_URL;
+      },
+      onError: mutationError("Couldn't impersonate"),
+    },
+  });
+
+  function openEdit(user: AdminUserSummary) {
+    setUserToEdit(user);
+    setYearLevel(user.yearLevel != null ? String(user.yearLevel) : "");
+    setCourseType(user.courseType ?? "");
+    setSchool(user.school ?? "");
+  }
+
+  function submitProfile(e: FormEvent) {
+    e.preventDefault();
+    if (!userToEdit || yearLevel === "" || courseType === "") return;
+    upsertProfile.mutate({
+      id: userToEdit.id,
+      data: {
+        yearLevel: Number(yearLevel),
+        courseType: courseType as CourseType,
+        school: school.trim() === "" ? null : school.trim(),
+      },
+    });
+  }
 
   if (isChecking || !isReady) {
     return (
@@ -109,8 +205,8 @@ export default function AdminUsers() {
         <div>
           <h1 className="font-serif text-3xl font-semibold">Users</h1>
           <p className="mt-1 text-muted-foreground">
-            Everyone with an account, newest first. Grant or remove admin access,
-            or delete an account.
+            Everyone with an account, newest first. Set study profiles, grant or
+            remove admin access, impersonate for testing, or delete an account.
           </p>
         </div>
 
@@ -175,7 +271,11 @@ export default function AdminUsers() {
                             )}
                           </TableCell>
                           <TableCell>{user.yearLevel ?? "—"}</TableCell>
-                          <TableCell>{user.courseType ?? "—"}</TableCell>
+                          <TableCell>
+                            {user.courseType
+                              ? COURSE_LABELS[user.courseType] ?? user.courseType
+                              : "—"}
+                          </TableCell>
                           <TableCell className="text-muted-foreground">
                             {user.school ?? "—"}
                           </TableCell>
@@ -193,12 +293,6 @@ export default function AdminUsers() {
                                   variant="ghost"
                                   size="icon"
                                   aria-label={`Actions for ${fullName(user)}`}
-                                  disabled={isSelf}
-                                  title={
-                                    isSelf
-                                      ? "You can't change your own account — another admin has to."
-                                      : undefined
-                                  }
                                   data-testid={`button-user-actions-${user.id}`}
                                 >
                                   <MoreHorizontal className="h-4 w-4" aria-hidden />
@@ -206,7 +300,25 @@ export default function AdminUsers() {
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 <DropdownMenuItem
-                                  disabled={setAdmin.isPending}
+                                  onSelect={() => openEdit(user)}
+                                  data-testid={`menu-edit-profile-${user.id}`}
+                                >
+                                  <GraduationCap className="mr-2 h-4 w-4" aria-hidden />
+                                  {user.yearLevel != null
+                                    ? "Edit profile…"
+                                    : "Set profile…"}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  disabled={isSelf || impersonate.isPending}
+                                  onSelect={() => impersonate.mutate({ id: user.id })}
+                                  data-testid={`menu-impersonate-${user.id}`}
+                                >
+                                  <UserCog className="mr-2 h-4 w-4" aria-hidden />
+                                  Impersonate
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  disabled={isSelf || setAdmin.isPending}
                                   onSelect={() =>
                                     setAdmin.mutate({
                                       id: user.id,
@@ -228,6 +340,7 @@ export default function AdminUsers() {
                                   )}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
+                                  disabled={isSelf}
                                   className="text-destructive focus:text-destructive"
                                   onSelect={() => setUserToDelete(user)}
                                   data-testid={`menu-delete-user-${user.id}`}
@@ -247,6 +360,98 @@ export default function AdminUsers() {
             )}
           </CardContent>
         </Card>
+
+        {/* Profile editor — works on any user, including yourself, so an admin
+            can test every year level and course. */}
+        <Dialog
+          open={userToEdit != null}
+          onOpenChange={(open) => !open && setUserToEdit(null)}
+        >
+          <DialogContent className="sm:max-w-md">
+            <form onSubmit={submitProfile}>
+              <DialogHeader>
+                <DialogTitle className="font-serif">
+                  Study profile — {userToEdit ? fullName(userToEdit) : ""}
+                </DialogTitle>
+                <DialogDescription>
+                  Sets what the curriculum map and library show this user.
+                  Clearing the profile sends them through onboarding again.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-year">Year level</Label>
+                  <Select value={yearLevel} onValueChange={setYearLevel}>
+                    <SelectTrigger id="edit-year" data-testid="select-edit-year">
+                      <SelectValue placeholder="Select year" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {YEAR_LEVELS.map((y) => (
+                        <SelectItem key={y} value={String(y)}>
+                          Year {y}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-course">Course</Label>
+                  <Select value={courseType} onValueChange={setCourseType}>
+                    <SelectTrigger id="edit-course" data-testid="select-edit-course">
+                      <SelectValue placeholder="Select course" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(COURSE_LABELS).map(([value, label]) => (
+                        <SelectItem key={value} value={value}>
+                          {label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-school">School (optional)</Label>
+                  <Input
+                    id="edit-school"
+                    value={school}
+                    onChange={(e) => setSchool(e.target.value)}
+                    placeholder="School name"
+                    data-testid="input-edit-school"
+                  />
+                </div>
+              </div>
+
+              <DialogFooter className="gap-2 sm:justify-between">
+                {userToEdit?.yearLevel != null ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="text-destructive"
+                    disabled={clearProfile.isPending}
+                    onClick={() =>
+                      userToEdit && clearProfile.mutate({ id: userToEdit.id })
+                    }
+                    data-testid="button-clear-profile"
+                  >
+                    {clearProfile.isPending ? "Clearing…" : "Clear profile"}
+                  </Button>
+                ) : (
+                  <span />
+                )}
+                <Button
+                  type="submit"
+                  disabled={
+                    yearLevel === "" || courseType === "" || upsertProfile.isPending
+                  }
+                  data-testid="button-save-profile"
+                >
+                  {upsertProfile.isPending ? "Saving…" : "Save profile"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
 
         <AlertDialog
           open={userToDelete != null}

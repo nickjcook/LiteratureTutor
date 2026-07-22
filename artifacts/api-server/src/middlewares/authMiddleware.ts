@@ -18,6 +18,9 @@ declare global {
       isAuthenticated(): this is AuthedRequest;
 
       user?: User | undefined;
+
+      /** Admin identity while this session is impersonating another user. */
+      impersonator?: User | undefined;
     }
 
     export interface AuthedRequest {
@@ -83,5 +86,6 @@ export async function authMiddleware(
   }
 
   req.user = refreshed.user;
+  req.impersonator = refreshed.impersonator;
   next();
 }

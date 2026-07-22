@@ -5,6 +5,8 @@ export type { AuthUser };
 
 interface AuthState {
   user: AuthUser | null;
+  /** The admin's own identity while impersonating another user, else null. */
+  impersonator: AuthUser | null;
   isLoading: boolean;
   isAuthenticated: boolean;
   login: () => void;
@@ -13,6 +15,7 @@ interface AuthState {
 
 export function useAuth(): AuthState {
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [impersonator, setImpersonator] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -21,17 +24,22 @@ export function useAuth(): AuthState {
     fetch("/api/auth/user", { credentials: "include" })
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json() as Promise<{ user: AuthUser | null }>;
+        return res.json() as Promise<{
+          user: AuthUser | null;
+          impersonator?: AuthUser | null;
+        }>;
       })
       .then((data) => {
         if (!cancelled) {
           setUser(data.user ?? null);
+          setImpersonator(data.impersonator ?? null);
           setIsLoading(false);
         }
       })
       .catch(() => {
         if (!cancelled) {
           setUser(null);
+          setImpersonator(null);
           setIsLoading(false);
         }
       });
@@ -52,6 +60,7 @@ export function useAuth(): AuthState {
 
   return {
     user,
+    impersonator,
     isLoading,
     isAuthenticated: !!user,
     login,

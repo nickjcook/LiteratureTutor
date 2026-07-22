@@ -16,6 +16,10 @@ export default function Landing() {
         <h1 className="mt-4 font-serif text-4xl font-semibold tracking-tight sm:text-5xl">
           English &amp; Literature, taught the way it should be.
         </h1>
+        <p className="mt-3 font-serif text-lg italic text-muted-foreground">
+          <span className="not-italic font-medium">Telos</span> — the end at which
+          all learning aims.
+        </p>
         <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground">
           <span className="font-medium text-foreground">TELOS</span> delivers twenty
           years of teaching practice as a living methodology — the same frameworks, the

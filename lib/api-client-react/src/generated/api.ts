@@ -231,6 +231,77 @@ export function useGetCurrentAuthUser<TData = Awaited<ReturnType<typeof getCurre
 
 
 
+export const getStopImpersonatingUrl = () => {
+
+
+
+
+  return `/api/auth/stop-impersonating`
+}
+
+/**
+ * @summary End an admin impersonation session and restore the admin identity
+ */
+export const stopImpersonating = async ( options?: RequestInit): Promise<AuthUserEnvelope> => {
+
+  return customFetch<AuthUserEnvelope>(getStopImpersonatingUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getStopImpersonatingMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof stopImpersonating>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof stopImpersonating>>, TError,void, TContext> => {
+
+const mutationKey = ['stopImpersonating'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof stopImpersonating>>, void> = () => {
+
+
+          return  stopImpersonating(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type StopImpersonatingMutationResult = NonNullable<Awaited<ReturnType<typeof stopImpersonating>>>
+
+    export type StopImpersonatingMutationError = ErrorType<ErrorEnvelope>
+
+    /**
+ * @summary End an admin impersonation session and restore the admin identity
+ */
+export const useStopImpersonating = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof stopImpersonating>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof stopImpersonating>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getStopImpersonatingMutationOptions(options));
+    }
+
 export const getBeginBrowserLoginUrl = (params?: BeginBrowserLoginParams,) => {
   const normalizedParams = new URLSearchParams();
 
@@ -1538,6 +1609,220 @@ export const useAdminSetUserAdmin = <TError = ErrorType<ErrorEnvelope>,
         TContext
       > => {
       return useMutation(getAdminSetUserAdminMutationOptions(options));
+    }
+
+export const getAdminUpsertUserProfileUrl = (id: string,) => {
+
+
+
+
+  return `/api/admin/users/${id}/profile`
+}
+
+/**
+ * @summary Set or update a user's study profile (admin only)
+ */
+export const adminUpsertUserProfile = async (id: string,
+    upsertStudentProfileBody: UpsertStudentProfileBody, options?: RequestInit): Promise<AdminUserSummary> => {
+
+  return customFetch<AdminUserSummary>(getAdminUpsertUserProfileUrl(id),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(upsertStudentProfileBody)
+  }
+);}
+
+
+
+
+
+export const getAdminUpsertUserProfileMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminUpsertUserProfile>>, TError,{id: string;data: BodyType<UpsertStudentProfileBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof adminUpsertUserProfile>>, TError,{id: string;data: BodyType<UpsertStudentProfileBody>}, TContext> => {
+
+const mutationKey = ['adminUpsertUserProfile'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof adminUpsertUserProfile>>, {id: string;data: BodyType<UpsertStudentProfileBody>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  adminUpsertUserProfile(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AdminUpsertUserProfileMutationResult = NonNullable<Awaited<ReturnType<typeof adminUpsertUserProfile>>>
+    export type AdminUpsertUserProfileMutationBody = BodyType<UpsertStudentProfileBody>
+    export type AdminUpsertUserProfileMutationError = ErrorType<ErrorEnvelope>
+
+    /**
+ * @summary Set or update a user's study profile (admin only)
+ */
+export const useAdminUpsertUserProfile = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminUpsertUserProfile>>, TError,{id: string;data: BodyType<UpsertStudentProfileBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof adminUpsertUserProfile>>,
+        TError,
+        {id: string;data: BodyType<UpsertStudentProfileBody>},
+        TContext
+      > => {
+      return useMutation(getAdminUpsertUserProfileMutationOptions(options));
+    }
+
+export const getAdminClearUserProfileUrl = (id: string,) => {
+
+
+
+
+  return `/api/admin/users/${id}/profile`
+}
+
+/**
+ * @summary Clear a user's study profile so onboarding runs again (admin only)
+ */
+export const adminClearUserProfile = async (id: string, options?: RequestInit): Promise<AdminUserSummary> => {
+
+  return customFetch<AdminUserSummary>(getAdminClearUserProfileUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getAdminClearUserProfileMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminClearUserProfile>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof adminClearUserProfile>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['adminClearUserProfile'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof adminClearUserProfile>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  adminClearUserProfile(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AdminClearUserProfileMutationResult = NonNullable<Awaited<ReturnType<typeof adminClearUserProfile>>>
+
+    export type AdminClearUserProfileMutationError = ErrorType<ErrorEnvelope>
+
+    /**
+ * @summary Clear a user's study profile so onboarding runs again (admin only)
+ */
+export const useAdminClearUserProfile = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminClearUserProfile>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof adminClearUserProfile>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getAdminClearUserProfileMutationOptions(options));
+    }
+
+export const getAdminImpersonateUserUrl = (id: string,) => {
+
+
+
+
+  return `/api/admin/users/${id}/impersonate`
+}
+
+/**
+ * @summary Start impersonating a user for testing (admin only)
+ */
+export const adminImpersonateUser = async (id: string, options?: RequestInit): Promise<AuthUserEnvelope> => {
+
+  return customFetch<AuthUserEnvelope>(getAdminImpersonateUserUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getAdminImpersonateUserMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminImpersonateUser>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof adminImpersonateUser>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['adminImpersonateUser'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof adminImpersonateUser>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  adminImpersonateUser(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AdminImpersonateUserMutationResult = NonNullable<Awaited<ReturnType<typeof adminImpersonateUser>>>
+
+    export type AdminImpersonateUserMutationError = ErrorType<ErrorEnvelope>
+
+    /**
+ * @summary Start impersonating a user for testing (admin only)
+ */
+export const useAdminImpersonateUser = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminImpersonateUser>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof adminImpersonateUser>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getAdminImpersonateUserMutationOptions(options));
     }
 
 export const getAdminDeleteUserUrl = (id: string,) => {

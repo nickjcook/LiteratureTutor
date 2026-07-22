@@ -14,6 +14,9 @@ export interface SessionData {
   access_token: string;
   refresh_token?: string;
   expires_at?: number;
+  // Set while an admin is impersonating another user: the admin's own
+  // identity, restored by /auth/stop-impersonating.
+  impersonator?: AuthUser;
 }
 
 let oidcConfig: client.Configuration | null = null;

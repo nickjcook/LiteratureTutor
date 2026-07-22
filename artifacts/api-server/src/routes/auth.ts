@@ -2,15 +2,19 @@ import * as oidc from "openid-client";
 import { Router, type IRouter, type Request, type Response } from "express";
 import {
   GetCurrentAuthUserResponse,
+  StopImpersonatingResponse,
   ExchangeMobileAuthorizationCodeBody,
   ExchangeMobileAuthorizationCodeResponse,
   LogoutMobileSessionResponse,
 } from "@workspace/api-zod";
 import { db, usersTable } from "@workspace/db";
+import { ensureBootstrapAdmin } from "../lib/adminAuth";
 import {
   clearSession,
   getOidcConfig,
   getSessionId,
+  getSession,
+  updateSession,
   createSession,
   deleteSession,
   SESSION_COOKIE,
@@ -79,6 +83,11 @@ async function upsertUser(claims: Record<string, unknown>) {
       },
     })
     .returning();
+
+  // Bootstrap-admin allow-list (ADMIN_EMAILS secret): grants the admin role at
+  // login. Identity is still verified by Replit Auth as normal.
+  await ensureBootstrapAdmin(user);
+
   return user;
 }
 
@@ -86,9 +95,45 @@ router.get("/auth/user", (req: Request, res: Response) => {
   res.json(
     GetCurrentAuthUserResponse.parse({
       user: req.isAuthenticated() ? req.user : null,
+      impersonator: req.isAuthenticated() ? (req.impersonator ?? null) : null,
     }),
   );
 });
+
+// Deliberately NOT admin-gated: while impersonating a non-admin the session's
+// effective user fails requireAdmin, yet must be able to end the impersonation.
+// Possession of a session with an `impersonator` is the authorisation.
+router.post(
+  "/auth/stop-impersonating",
+  async (req: Request, res: Response) => {
+    if (!req.isAuthenticated()) {
+      res.status(401).json({ error: "Not authenticated" });
+      return;
+    }
+    const sid = getSessionId(req);
+    const session = sid ? await getSession(sid) : null;
+    if (!sid || !session?.impersonator) {
+      res.status(400).json({ error: "Not currently impersonating" });
+      return;
+    }
+
+    req.log.info(
+      { adminId: session.impersonator.id, targetId: session.user.id },
+      "Impersonation ended",
+    );
+
+    session.user = session.impersonator;
+    delete session.impersonator;
+    await updateSession(sid, session);
+
+    res.json(
+      StopImpersonatingResponse.parse({
+        user: session.user,
+        impersonator: null,
+      }),
+    );
+  },
+);
 
 router.get("/login", async (req: Request, res: Response) => {
   const config = await getOidcConfig();

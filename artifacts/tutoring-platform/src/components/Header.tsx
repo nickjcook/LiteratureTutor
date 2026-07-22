@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { MetalanguageDictionary } from "./MetalanguageDictionary";
 import { DisplayMenu } from "./DisplayMenu";
 import { UserMenu } from "./UserMenu";
+import telosIcon from "@/assets/telos_icon_48.png";
 
 export function Header() {
   const { isAuthenticated } = useAuth();
@@ -15,10 +16,13 @@ export function Header() {
   return (
     <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
-        <Link href="/" className="flex items-baseline gap-2 font-serif text-lg font-semibold tracking-tight">
-          TELOS
-          <span className="hidden font-sans text-sm font-normal text-muted-foreground sm:inline">
-            English &amp; Literature
+        <Link href="/" className="flex items-center gap-2.5 font-serif text-lg font-semibold tracking-tight">
+          <img src={telosIcon} alt="" className="h-8 w-8 rounded-md" />
+          <span className="flex items-baseline gap-2">
+            TELOS
+            <span className="hidden font-sans text-sm font-normal text-muted-foreground sm:inline">
+              English &amp; Literature
+            </span>
           </span>
         </Link>
 
