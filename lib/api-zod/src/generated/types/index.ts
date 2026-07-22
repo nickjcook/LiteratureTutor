@@ -31,6 +31,7 @@ export * from './metalanguageTerm';
 export * from './mobileTokenExchangeRequest';
 export * from './mobileTokenExchangeSuccess';
 export * from './progressRecord';
+export * from './setUserAdminBody';
 export * from './studentProfile';
 export * from './studentProfileEnvelope';
 export * from './taskType';

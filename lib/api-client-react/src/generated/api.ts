@@ -41,6 +41,7 @@ import type {
   MobileTokenExchangeRequest,
   MobileTokenExchangeSuccess,
   ProgressRecord,
+  SetUserAdminBody,
   StudentProfile,
   StudentProfileEnvelope,
   Text,
@@ -1466,6 +1467,149 @@ export function useAdminListUsers<TData = Awaited<ReturnType<typeof adminListUse
 
 
 
+
+export const getAdminSetUserAdminUrl = (id: string,) => {
+
+
+
+
+  return `/api/admin/users/${id}/admin`
+}
+
+/**
+ * @summary Grant or revoke admin access for a user (admin only)
+ */
+export const adminSetUserAdmin = async (id: string,
+    setUserAdminBody: SetUserAdminBody, options?: RequestInit): Promise<AdminUserSummary> => {
+
+  return customFetch<AdminUserSummary>(getAdminSetUserAdminUrl(id),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(setUserAdminBody)
+  }
+);}
+
+
+
+
+
+export const getAdminSetUserAdminMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminSetUserAdmin>>, TError,{id: string;data: BodyType<SetUserAdminBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof adminSetUserAdmin>>, TError,{id: string;data: BodyType<SetUserAdminBody>}, TContext> => {
+
+const mutationKey = ['adminSetUserAdmin'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof adminSetUserAdmin>>, {id: string;data: BodyType<SetUserAdminBody>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  adminSetUserAdmin(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AdminSetUserAdminMutationResult = NonNullable<Awaited<ReturnType<typeof adminSetUserAdmin>>>
+    export type AdminSetUserAdminMutationBody = BodyType<SetUserAdminBody>
+    export type AdminSetUserAdminMutationError = ErrorType<ErrorEnvelope>
+
+    /**
+ * @summary Grant or revoke admin access for a user (admin only)
+ */
+export const useAdminSetUserAdmin = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminSetUserAdmin>>, TError,{id: string;data: BodyType<SetUserAdminBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof adminSetUserAdmin>>,
+        TError,
+        {id: string;data: BodyType<SetUserAdminBody>},
+        TContext
+      > => {
+      return useMutation(getAdminSetUserAdminMutationOptions(options));
+    }
+
+export const getAdminDeleteUserUrl = (id: string,) => {
+
+
+
+
+  return `/api/admin/users/${id}`
+}
+
+/**
+ * @summary Delete a user account and all associated data (admin only)
+ */
+export const adminDeleteUser = async (id: string, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getAdminDeleteUserUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getAdminDeleteUserMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminDeleteUser>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof adminDeleteUser>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['adminDeleteUser'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof adminDeleteUser>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  adminDeleteUser(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AdminDeleteUserMutationResult = NonNullable<Awaited<ReturnType<typeof adminDeleteUser>>>
+
+    export type AdminDeleteUserMutationError = ErrorType<ErrorEnvelope>
+
+    /**
+ * @summary Delete a user account and all associated data (admin only)
+ */
+export const useAdminDeleteUser = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminDeleteUser>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof adminDeleteUser>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getAdminDeleteUserMutationOptions(options));
+    }
 
 export const getAdminListDocumentsUrl = (params?: AdminListDocumentsParams,) => {
   const normalizedParams = new URLSearchParams();

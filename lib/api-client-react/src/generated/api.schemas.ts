@@ -210,6 +210,10 @@ export interface AdminUserSummary {
   school: string | null;
 }
 
+export interface SetUserAdminBody {
+  isAdmin: boolean;
+}
+
 export interface ProgressRecord {
   documentId: number;
   /** @nullable */

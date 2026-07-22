@@ -322,6 +322,40 @@ export const AdminListUsersResponse = zod.array(AdminListUsersResponseItem)
 
 
 /**
+ * @summary Grant or revoke admin access for a user (admin only)
+ */
+export const AdminSetUserAdminParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const AdminSetUserAdminBody = zod.object({
+  "isAdmin": zod.boolean()
+})
+
+export const AdminSetUserAdminResponse = zod.object({
+  "id": zod.string(),
+  "email": zod.email().nullable(),
+  "firstName": zod.string().nullable(),
+  "lastName": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "isAdmin": zod.boolean(),
+  "yearLevel": zod.number().nullable(),
+  "courseType": zod.string().nullable(),
+  "school": zod.string().nullable()
+})
+
+
+/**
+ * @summary Delete a user account and all associated data (admin only)
+ */
+export const AdminDeleteUserParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const AdminDeleteUserResponse = zod.void()
+
+
+/**
  * @summary List all documents including drafts (admin only)
  */
 export const AdminListDocumentsQueryParams = zod.object({
