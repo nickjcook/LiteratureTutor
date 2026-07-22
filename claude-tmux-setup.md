@@ -374,7 +374,11 @@ Claude Code is a long-running Node process. On Replit it dies in three ways:
 
 `tmux` solves the first (the Claude process is detached from the pane).
 A bigger Node heap (`NODE_OPTIONS=--max-old-space-size=…`) solves the
-second. The third can't be prevented, so it's handled by **recovery** instead:
+second. The third can't be prevented from inside the workspace — a plain
+Replit workspace VM gets deallocated on Replit's schedule (roughly nightly,
+sometimes in daytime clusters), and nothing running *in* it, tmux included,
+can keep it alive; genuinely 24/7 uptime is what a Reserved VM / Always-On
+deployment is for, not a dev workspace. So it's handled by **recovery** instead:
 the *conversation* survives a recycle because transcripts live in the persisted
 `CLAUDE_CONFIG_DIR` (Step 7), and `run-claude.sh` **auto-resumes** it — when the
 prior run died without a clean exit, the next launch runs `claude --continue`
@@ -410,7 +414,13 @@ command -v tmux && tmux -V || echo "→ tmux not installed yet"
 
 # What's the container's memory cap? (sets the right heap size)
 cat /sys/fs/cgroup/memory.max 2>/dev/null || echo "→ no cgroup v2"
-free -h 2>/dev/null | head -2
+# Baseline already in use — read THIS CONTAINER's cgroup, not free -h (which on
+# Replit's shared nodes reports the whole host; see Step 2):
+awk '{printf "→ container baseline: %.1f GB\n", $1/1024/1024/1024}' \
+  /sys/fs/cgroup/memory.current 2>/dev/null \
+  || cat /sys/fs/cgroup/memory/memory.usage_in_bytes 2>/dev/null \
+  || echo "→ no cgroup baseline readable"
+free -h 2>/dev/null | head -2   # host-wide — sanity check only, NOT the baseline
 
 # Which package manager is available for installing tmux?
 command -v nix-env  && echo "→ legacy Nix available"
@@ -438,8 +448,17 @@ previous attempt) — flag it. That's what stops yesterday's headache.
 > looks identical to the heap-abort (134) the setting was meant to prevent.
 
 **Don't size the heap to `memory.max`. Size it to what's actually free.** From
-Step 1 you have both the cap (`memory.max`) and the baseline already in use
-(`free -h` / `memory.current`). The rule:
+Step 1 you have both the cap (`memory.max`) and the baseline already in use —
+and the baseline must come from the **cgroup** (`memory.current`;
+`memory.usage_in_bytes` on cgroup v1), **not** from `free -h`. On Replit's
+shared nodes `free -h` reports the *entire host*, not your container: its
+"used" figure can overstate the container's real baseline by many GB and
+swings with other tenants' load (observed on one Repl: `free -h` "used" went
+14 GiB → 4.3 GiB within minutes while the container's own `memory.current`
+sat near ~3.7 GB the whole time). Plugged into the formula below, the inflated
+figure yields a uselessly tiny — or negative — heap, and a different answer
+every run. Use `free -h` only as a rough sanity check, or a fallback when the
+cgroup files are unreadable. The rule:
 
 ```
 heap ceiling  ≈  container cap  −  baseline already in use  −  ~3 GB safety margin
@@ -450,7 +469,8 @@ child processes, tmux, the shell) plus growth in the baseline during a session.
 Round **down** to a clean GB value and set that as `--max-old-space-size` (in MB).
 
 **Worked example — the Repl this doc was last installed on (16 GB cap):**
-`free -h` showed **~4.5 GB already used** at idle, before Claude grew. So:
+the cgroup baseline (`memory.current`) showed **~4.5 GB already used** at
+idle, before Claude grew. So:
 
 ```
 16 GB cap − 4.5 GB baseline − 3 GB margin  ≈  8 GB  →  --max-old-space-size=8192
@@ -897,6 +917,40 @@ esac
 chmod +x claude-tmux.sh run-claude.sh
 grep -qxF 'claude-logs/' .gitignore 2>/dev/null || echo 'claude-logs/' >> .gitignore
 ```
+
+> **Run the `.gitignore` line immediately — same breath as writing the scripts,
+> before Step 4's first launch.** Replit's background Agent auto-checkpoint
+> commits new repo-root files within seconds of their creation; on one fresh
+> install it grabbed the launcher scripts *and* the just-created `claude-logs/`
+> runtime dir in a single auto-commit before the ignore line had run. And a
+> **tracked** file overrides `.gitignore` (the same race Part 4 Step 2b
+> documents for `.claude/settings.local.json`), so adding the ignore afterwards
+> silently does nothing — the confusing symptom is `git check-ignore` reporting
+> the path as ignored while the logs keep showing up in `git status`. If a
+> checkpoint beat you to it, untrack them (keeps the local files):
+>
+> ```sh
+> git ls-files claude-logs | grep -q . && git rm -r --cached claude-logs
+> ```
+>
+> **None of the Claude-tmux scaffolding needs to be pushed to GitHub.** The
+> Part 4 GitHub mirror exists to back up *the app's own code*; everything this
+> doc installs is regenerable and therefore optional to track:
+>
+> | Scaffolding | Why a push adds nothing |
+> |---|---|
+> | `claude-tmux-setup.md` (this doc) | re-fetched daily from the central app by the auto-update hook |
+> | `run-claude.sh` / `claude-tmux.sh` / `claude-autostart.sh` | auto-synced from this doc's marked script blocks (v2 hook) |
+> | `claude-logs/`, `.worklog-reported` | runtime state — should be gitignored anyway (above) |
+> | `$REPL_HOME/.config/*` (bashrc hooks, claude login) | outside the repo; never committed |
+>
+> Committing the doc + launcher scripts is still fine and is the default (they
+> then ride along on normal pushes — harmless). But if you'd rather keep the
+> repo's GitHub history free of scaffolding noise, adding all of them to
+> `.gitignore` loses nothing: a fresh container heals itself from the durable
+> bashrc hooks and the central app. Either way, **never commit on the
+> scaffolding's account alone** — the worklog scope rule in Part 2 applies (a
+> setup-only session needs no commit, and its changes never *require* a push).
 
 ---
 
@@ -1365,7 +1419,8 @@ which tmux
 ### Exit 134 (SIGABRT — heap exhaustion) still happens
 
 The heap ceiling wasn't enough (very long session, large repo). Before raising
-it, re-check the baseline (`free -h`) — you can only raise the ceiling by as much
+it, re-check the baseline (cgroup `memory.current`, not `free -h` — see
+Step 2) — you can only raise the ceiling by as much
 free headroom as you actually have, or you'll just convert this into an exit-137
 OOM (see below). If there's room, bump it by ~2 GB:
 
@@ -1386,7 +1441,7 @@ the cap. Confirm it:
 ```sh
 grep oom_kill /sys/fs/cgroup/memory.events     # non-zero count = OOM happened
 cat /sys/fs/cgroup/memory.max                  # the cap
-free -h                                         # baseline 'used' before Claude grows
+cat /sys/fs/cgroup/memory.current              # this container's baseline (not free -h)
 ```
 
 The fix is **lower the heap ceiling**, not raise it — re-run the Step 2 formula
@@ -1546,6 +1601,77 @@ in a clean headless browser (Part 3) and grep the DOM / loaded chunk for a
 known-new string. New there but old in your browser means it's a client/edge
 cache, not a bad deploy.
 
+### The auto-generated `Project` runButton silently runs TWO app dev servers
+
+> Another *app-you're-deploying* quirk (like the edge-cache entry above), and a
+> close cousin of Step 8 — same `.replit` run-button workflow, opposite problem:
+> instead of adding a task you want, the scaffold added one you don't. Worth
+> checking on any Agent-scaffolded Repl, because the symptom is invisible until
+> side effects double.
+
+**Symptom:** every boot launches **two full instances** of the app's dev server.
+The webview only shows one, so nothing looks wrong — until you notice doubled
+side effects: a scheduler/cron self-POST firing twice, webhooks processed twice,
+two copies of a DB scraper, wasted RAM/CPU (which also eats into the Step 2 heap
+headroom).
+
+**Cause:** Replit's Agent frequently scaffolds `.replit` with a parallel
+wrapper workflow that *both* shell-execs a dev server on a second port *and*
+runs the real workflow — which starts its own dev server:
+
+```toml
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "PORT=8081 ... pnpm run dev"   # instance A (second port)
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "My App"                       # instance B — also runs `pnpm run dev`
+```
+
+There's usually a matching inert `[[ports]] localPort = <second port>` block
+left over too.
+
+**Detect it** (any app):
+
+```sh
+ps -eo pid,ppid,etime,args | grep -E "run dev|watch|index\.(t|j)s" | grep -v grep
+```
+
+Two identical dev-server process trees (often both parented by Replit's
+supervisor) means you're running doubles. Corroborate by grepping the app logs
+for the startup banner / "listening on" appearing twice per boot, or any
+self-POST/heartbeat firing twice.
+
+**Fix** — point the run button straight at the single real workflow and delete
+the wrapper plus its extra port:
+
+```toml
+[workflows]
+runButton = "My App"          # was "Project"
+
+[[workflows.workflow]]
+name = "My App"
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm run dev"
+waitForPort = 8080
+# (delete the whole `Project` workflow and the second [[ports]] block)
+```
+
+Takes effect on the next workflow restart / VM boot; the already-running
+duplicate persists until then (kill it or restart the workflow). This is pure
+hygiene — it does **not** stop Replit's workspace VM recycles (see "Why this
+exists" at the top of Part 1) — but it removes a real, easy-to-miss source of
+double side effects. If you later add Step 8's autostart task, you'll be
+editing this same workflow — make sure you're extending the *real* one, not
+resurrecting the wrapper.
+
 ---
 
 ## When you're done — what to report back to the user
@@ -1554,9 +1680,9 @@ A short status with the four facts that matter:
 
 1. **Binary:** the `[bin]` line from the meta log (where `claude` actually
    resolved on this Repl).
-2. **Container cap + baseline:** what `memory.max` returned, the baseline `used`
-   from `free -h`, and which `--max-old-space-size` the Step 2 formula gave
-   (`cap − baseline − ~3 GB`).
+2. **Container cap + baseline:** what `memory.max` returned, the container
+   baseline from cgroup `memory.current`, and which `--max-old-space-size` the
+   Step 2 formula gave (`cap − baseline − ~3 GB`).
 3. **tmux:** was it already installed, or did you install it via Nix?
 4. **Verification:** confirmed the session reattaches across `Ctrl-b d` →
    re-running the launcher, and that the Step 6 `claude` shadow function is in
