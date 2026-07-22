@@ -305,6 +305,23 @@ export const GetAdminStatusResponse = zod.object({
 
 
 /**
+ * @summary List all user accounts (admin only, read-only)
+ */
+export const AdminListUsersResponseItem = zod.object({
+  "id": zod.string(),
+  "email": zod.email().nullable(),
+  "firstName": zod.string().nullable(),
+  "lastName": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "isAdmin": zod.boolean(),
+  "yearLevel": zod.number().nullable(),
+  "courseType": zod.string().nullable(),
+  "school": zod.string().nullable()
+})
+export const AdminListUsersResponse = zod.array(AdminListUsersResponseItem)
+
+
+/**
  * @summary List all documents including drafts (admin only)
  */
 export const AdminListDocumentsQueryParams = zod.object({

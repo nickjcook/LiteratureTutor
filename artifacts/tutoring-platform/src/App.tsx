@@ -15,6 +15,7 @@ import Faq from "@/pages/Faq";
 import AdminDocumentList from "@/pages/admin/DocumentList";
 import AdminDocumentEditor from "@/pages/admin/DocumentEditor";
 import AdminSettings from "@/pages/admin/Settings";
+import AdminUsers from "@/pages/admin/Users";
 
 const queryClient = new QueryClient();
 
@@ -30,6 +31,7 @@ function Router() {
       <Route path="/terms" component={Terms} />
       <Route path="/faq" component={Faq} />
       <Route path="/admin/settings" component={AdminSettings} />
+      <Route path="/admin/users" component={AdminUsers} />
       <Route path="/admin/documents/:id" component={AdminDocumentEditor} />
       <Route path="/admin/documents" component={AdminDocumentList} />
       <Route path="/admin" component={AdminDocumentList} />

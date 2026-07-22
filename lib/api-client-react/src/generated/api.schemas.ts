@@ -192,6 +192,24 @@ export interface AdminStatus {
   isAdmin: boolean;
 }
 
+export interface AdminUserSummary {
+  id: string;
+  /** @nullable */
+  email: string | null;
+  /** @nullable */
+  firstName: string | null;
+  /** @nullable */
+  lastName: string | null;
+  createdAt: string;
+  isAdmin: boolean;
+  /** @nullable */
+  yearLevel: number | null;
+  /** @nullable */
+  courseType: string | null;
+  /** @nullable */
+  school: string | null;
+}
+
 export interface ProgressRecord {
   documentId: number;
   /** @nullable */

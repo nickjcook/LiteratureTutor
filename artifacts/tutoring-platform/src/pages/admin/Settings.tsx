@@ -93,13 +93,15 @@ export default function AdminSettings() {
 
           <SectionCard icon={Users} title="User management">
             <div className="mb-2">
-              <Badge variant="secondary">Coming soon</Badge>
+              <Badge variant="secondary">Interim — read-only</Badge>
             </div>
-            <p>
-              Manage users and roles (admin / advisor / member). This will be built
-              on the new Clerk sign-in, where roles are assigned — see Authentication
-              below.
+            <p className="mb-3">
+              Everyone with an account. Role management (admin / advisor / member)
+              arrives with the Clerk sign-in — see Authentication below.
             </p>
+            <div className="space-y-1">
+              <LinkRow href="/admin/users" label="View users" />
+            </div>
           </SectionCard>
 
           <SectionCard icon={KeyRound} title="Authentication &amp; roles">

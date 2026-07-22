@@ -408,6 +408,27 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
 
+  /admin/users:
+    get:
+      tags: [Admin]
+      operationId: adminListUsers
+      summary: List all user accounts (admin only, read-only)
+      responses:
+        "200":
+          description: All user accounts, newest first.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminUserSummary"
+        "403":
+          description: Not an admin.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
   /admin/documents:
     get:
       tags: [Admin]
@@ -976,6 +997,32 @@ components:
       properties:
         isAdmin:
           type: boolean
+
+    AdminUserSummary:
+      type: object
+      required:
+        [id, email, firstName, lastName, createdAt, isAdmin, yearLevel, courseType, school]
+      properties:
+        id:
+          type: string
+        email:
+          type: [string, "null"]
+          format: email
+        firstName:
+          type: [string, "null"]
+        lastName:
+          type: [string, "null"]
+        createdAt:
+          type: string
+          format: date-time
+        isAdmin:
+          type: boolean
+        yearLevel:
+          type: [integer, "null"]
+        courseType:
+          type: [string, "null"]
+        school:
+          type: [string, "null"]
 
     ProgressRecord:
       type: object

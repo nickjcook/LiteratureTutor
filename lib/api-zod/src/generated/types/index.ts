@@ -8,6 +8,7 @@
 
 export * from './adminListDocumentsParams';
 export * from './adminStatus';
+export * from './adminUserSummary';
 export * from './authorizationSessionHeaderParameter';
 export * from './authUser';
 export * from './authUserEnvelope';
