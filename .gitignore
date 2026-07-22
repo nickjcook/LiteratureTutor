@@ -56,3 +56,8 @@ run-claude.sh
 claude-tmux.sh
 claude-autostart.sh
 claude-logs/
+
+# Client / business documents — local only, never pushed to GitHub
+Assets/Gap_Analysis_for_Pamina.docx
+Assets/Post meeting notes for Nick's Gap Assessment .pdf
+Assets/Gap_Analysis_Meeting_Notes_Review.md
