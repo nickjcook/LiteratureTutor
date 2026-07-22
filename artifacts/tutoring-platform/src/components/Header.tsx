@@ -26,19 +26,20 @@ export function Header() {
             <HoverCardTrigger asChild>
               <img src={telosIcon} alt="" className="h-8 w-8 rounded-md" />
             </HoverCardTrigger>
-            <HoverCardContent align="start" className="w-60">
-              <div className="flex flex-col items-center gap-3 text-center">
-                {/* h-32 = 128px: renders the source 1:1, no resampling blur */}
+            <HoverCardContent align="start" className="w-[16.5rem] p-5">
+              <div className="flex flex-col items-center gap-3.5 text-center">
+                {/* h-32 = 128px: keeps the source 1:1 — do not scale, it
+                    reintroduces resampling blur */}
                 <img
                   src={telosIcon}
                   alt="TELOS — τέλος inscribed on a tablet"
                   className="h-32 w-32 rounded-xl shadow-md"
                 />
                 <div>
-                  <p className="font-serif text-lg font-semibold tracking-tight">
+                  <p className="font-serif text-xl font-semibold tracking-tight">
                     TELOS
                   </p>
-                  <p className="mt-1 font-serif text-sm italic leading-snug text-muted-foreground">
+                  <p className="mt-1.5 font-serif text-base italic leading-snug text-muted-foreground">
                     the end at which all learning aims
                   </p>
                 </div>
