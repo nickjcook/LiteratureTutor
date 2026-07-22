@@ -83,7 +83,14 @@ export async function clearSession(
   sid?: string,
 ): Promise<void> {
   if (sid) await deleteSession(sid);
-  res.clearCookie(SESSION_COOKIE, { path: "/" });
+  // Attributes must match how the cookie was set (see setSessionCookie) or
+  // browsers refuse to delete it — partitioned cookies especially.
+  res.clearCookie(SESSION_COOKIE, {
+    path: "/",
+    secure: true,
+    sameSite: "none",
+    partitioned: true,
+  });
 }
 
 export function getSessionId(req: Request): string | undefined {

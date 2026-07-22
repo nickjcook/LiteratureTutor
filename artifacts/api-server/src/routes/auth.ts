@@ -44,7 +44,12 @@ function setSessionCookie(res: Response, sid: string, maxAge?: number | null) {
   res.cookie(SESSION_COOKIE, sid, {
     httpOnly: true,
     secure: true,
-    sameSite: "lax",
+    // SameSite=None + Partitioned (CHIPS) so the session works inside the
+    // Replit preview iframe (a cross-site embed where Lax cookies are never
+    // sent). Partitioning keys the cookie to the embedding site, which keeps
+    // cross-site attacker pages from riding the session (CSRF stays blunted).
+    sameSite: "none",
+    partitioned: true,
     path: "/",
     // maxAge null => browser-session cookie (cleared when the browser closes);
     // used for local logins without "remember me".
