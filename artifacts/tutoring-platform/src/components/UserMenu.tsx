@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { LogOut, KeyRound, LayoutDashboard, UserRound } from "lucide-react";
+import { LogOut, KeyRound, LayoutDashboard, UserRound, Cog } from "lucide-react";
 import { useAuth } from "@workspace/replit-auth-web";
 import {
   useGetAdminStatus,
@@ -82,12 +82,20 @@ export function UserMenu() {
         <DropdownMenuSeparator />
 
         {adminStatus?.isAdmin && (
-          <DropdownMenuItem asChild data-testid="menu-admin">
-            <Link href="/admin">
-              <LayoutDashboard className="mr-2 h-4 w-4" aria-hidden />
-              Admin
-            </Link>
-          </DropdownMenuItem>
+          <>
+            <DropdownMenuItem asChild data-testid="menu-admin">
+              <Link href="/admin">
+                <LayoutDashboard className="mr-2 h-4 w-4" aria-hidden />
+                Admin
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild data-testid="menu-admin-settings">
+              <Link href="/admin/settings">
+                <Cog className="mr-2 h-4 w-4" aria-hidden />
+                Settings
+              </Link>
+            </DropdownMenuItem>
+          </>
         )}
 
         <DropdownMenuItem

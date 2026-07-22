@@ -30,9 +30,14 @@ export function Header() {
             <Link href="/library">Library</Link>
           </Button>
           {adminStatus?.isAdmin && (
-            <Button asChild variant="ghost" size="sm" data-testid="link-admin">
-              <Link href="/admin">Admin</Link>
-            </Button>
+            <>
+              <Button asChild variant="ghost" size="sm" data-testid="link-admin">
+                <Link href="/admin">Admin</Link>
+              </Button>
+              <Button asChild variant="ghost" size="sm" data-testid="link-admin-settings">
+                <Link href="/admin/settings">Settings</Link>
+              </Button>
+            </>
           )}
         </nav>
 
