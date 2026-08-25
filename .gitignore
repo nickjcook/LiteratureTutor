@@ -48,8 +48,14 @@ Thumbs.db
 .cache/
 .local/
 
-# Claude Code
-.claude/
+# Claude Code — local state is ignored, but the FLEET conventions are not:
+# .claude/settings.json carries the committed hooks (setup doc Parts 2, 8, 9)
+# and .claude/hooks/ the scripts they run, so they must travel with the repo.
+# Ignoring the whole directory is what kept this app off the fleet board.
+.claude/*
+!.claude/settings.json
+!.claude/hooks/
+!.claude/skills/
 
 # Claude Code persistent-session launcher scripts + runtime logs (local only)
 run-claude.sh
