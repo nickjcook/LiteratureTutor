@@ -8,17 +8,23 @@
 # Change it here, then re-run the installer in the doc.
 #
 # Usage (from Claude Code hooks): claude-status.sh working|working-ping|waiting|needs-attention
-#   UserPromptSubmit → working          (detail = the prompt, from stdin JSON)
-#   PostToolUse      → working-ping     (throttled to one POST a minute; re-asserts
-#                                        "working" when a turn keeps grinding after
-#                                        Stop: background tasks, subagents)
+#   UserPromptSubmit → working          (detail = the prompt, from stdin JSON;
+#                                        clears last turn's activity)
+#   PostToolUse      → working-ping     (activity = the tool and its target, at most
+#                                        one POST every 5s; also re-asserts "working"
+#                                        when a turn keeps grinding after Stop:
+#                                        background tasks, subagents)
 #   Stop             → waiting          (detail = last .worklog line, if any; clears
-#                                        the ping throttle so waiting→working flips
-#                                        on the very next tool call)
+#                                        the activity and the ping throttle, so
+#                                        waiting→working flips on the next tool call)
 #   Notification     → needs-attention  (ONLY for permission prompts — Claude Code
 #                                        also fires Notification for plain "idle,
 #                                        waiting for your input", which is waiting,
 #                                        not an emergency)
+#
+# Two fields, two questions, and keeping them apart is the point:
+#   detail   what the session was ASKED to do  -> the board's "Doing" column
+#   activity what it is doing about it NOW     -> the board's "Activity" column
 #
 # Fail-soft by design: a status hiccup must NEVER break a session, so every path
 # ends in exit 0 and nothing is printed (UserPromptSubmit stdout is injected
@@ -39,12 +45,18 @@ STATE="${1:-working}"
 # once suppress each other's pings.
 PING_MARK="/tmp/.fleet-ping-$(basename "${CLAUDE_PROJECT_DIR:-$PWD}" | tr -cd 'a-zA-Z0-9')"
 
+# PostToolUse fires on every tool call. The old throttle was 60s, which was
+# right when the ping only re-asserted "working" -- but it now also carries the
+# ACTIVITY, and a minute-old activity is not an activity. The board polls every
+# 5s, so match it: frequent enough to read as live, still bounded against a
+# burst of parallel tool calls.
 if [ "$STATE" = "working-ping" ]; then
   NOW="$(date +%s)"
   LAST="$(cat "$PING_MARK" 2>/dev/null || echo 0)"
-  [ $((NOW - LAST)) -lt 60 ] && exit 0
+  [ $((NOW - LAST)) -lt 5 ] && exit 0
   echo "$NOW" > "$PING_MARK" 2>/dev/null || true
   STATE="working"
+  PING=1
 fi
 
 ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || ROOT="${CLAUDE_PROJECT_DIR:-$PWD}"
@@ -68,12 +80,42 @@ APP="${WORKLOG_APP:-}"
 
 # stdin is JSON for the events that have any; read it once, before anything
 # else can consume it.
-PAYLOAD=""
-case "$STATE" in
-  working|needs-attention) PAYLOAD="$(cat 2>/dev/null)" ;;
-esac
+PAYLOAD="$(cat 2>/dev/null)"
 
+# ACTIVITY is a different question from DETAIL: detail is what the session was
+# ASKED to do (the prompt), activity is what it is doing about it this second
+# (the tool and its target). The fleet board has a column for each -- the
+# activity one is the slot the retired frame streamer used to occupy.
+ACTIVITY=""
+ACTIVITY_SET=0
 NOTE=""
+if [ "${PING:-0}" = "1" ]; then
+  ACTIVITY_SET=1
+  ACTIVITY="$(printf '%s' "$PAYLOAD" | python3 -c '
+import json, os, sys
+try:
+    d = json.load(sys.stdin)
+except Exception:
+    sys.exit(0)
+tool = d.get("tool_name") or ""
+i = d.get("tool_input") or {}
+if not isinstance(i, dict):
+    i = {}
+# The most useful half-dozen words: which tool, on what. Paths are shown as
+# basenames -- the full path is noise in a narrow column.
+target = ""
+for k in ("file_path", "notebook_path"):
+    if i.get(k):
+        target = os.path.basename(str(i[k]))
+        break
+else:
+    for k in ("command", "pattern", "query", "description", "url", "prompt"):
+        if i.get(k):
+            target = " ".join(str(i[k]).split())
+            break
+print(" ".join(f"{tool} {target}".split())[:120])' 2>/dev/null)"
+fi
+
 case "$STATE" in
   working)
     # The prompt IS "what this session is doing". Extract with python3 — a sed
@@ -85,9 +127,13 @@ try:
 except Exception:
     t = ""
 print(" ".join(t.split())[:200])' 2>/dev/null)"
+    # A new prompt starts a new turn: whatever tool ran last turn is not what
+    # this session is doing now, so clear it rather than leave it standing.
+    [ "${PING:-0}" = "1" ] || ACTIVITY_SET=1
     ;;
   waiting)
     rm -f "$PING_MARK" 2>/dev/null || true
+    ACTIVITY_SET=1
     [ -s "$ROOT/.worklog" ] && NOTE="$(tail -n1 "$ROOT/.worklog" 2>/dev/null)"
     ;;
   needs-attention)
@@ -99,6 +145,8 @@ except Exception:
     t = ""
 print(" ".join(t.split())[:200])' 2>/dev/null)"
     [ -z "$NOTE" ] && NOTE="waiting on a permission prompt"
+    ACTIVITY_SET=1
+    ACTIVITY="waiting for you to approve a tool"
     ;;
 esac
 
@@ -108,12 +156,18 @@ TS="$(date -Is 2>/dev/null || date)"
 # on the first quote, backslash or newline it contains. An empty note is omitted
 # entirely — the server preserves the stored detail rather than clearing it, so
 # a keepalive ping can't wipe what the prompt hook recorded.
-BODY="$(APP="$APP" STATE="$STATE" NOTE="$NOTE" TS="$TS" python3 -c '
+BODY="$(APP="$APP" STATE="$STATE" NOTE="$NOTE" TS="$TS" \
+        ACTIVITY="$ACTIVITY" ACTIVITY_SET="$ACTIVITY_SET" python3 -c '
 import json, os
 b = {"app": os.environ["APP"], "state": os.environ["STATE"], "ts": os.environ["TS"]}
 n = os.environ.get("NOTE", "").strip()
 if n:
     b["note"] = n[:300]
+# Omitted preserves, null clears -- so only send the key when this event has
+# something to say about the activity, and send null when it means "nothing".
+if os.environ.get("ACTIVITY_SET") == "1":
+    a = os.environ.get("ACTIVITY", "").strip()
+    b["activity"] = a[:200] if a else None
 print(json.dumps(b))' 2>/dev/null)"
 [ -z "$BODY" ] && exit 0
 
